@@ -1,6 +1,10 @@
 import { sampleDay } from "./sample-day"
 
 export const MINUTES_PER_DAY = 1440
+/** Starts and durations are whole multiples of this many minutes. */
+export const STEP_MINUTES = 5
+/** The latest a session can start: 23:55, still on the schedule's day. */
+export const LAST_START = MINUTES_PER_DAY - STEP_MINUTES
 
 /**
  * A titled block of time covering [start, start + duration). `start` is

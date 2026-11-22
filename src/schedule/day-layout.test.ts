@@ -190,6 +190,34 @@ describe("dayLayout", () => {
     ])
   })
 
+  it("keeps a session being dragged out of the fold, in the overflow lane", () => {
+    const layout = dayLayout(
+      [
+        session("A", "09:00", 60),
+        session("B", "09:00", 60),
+        session("C", "09:00", 60),
+        session("Dragged", "09:15", 30),
+        session("Folded", "09:30", 30),
+      ],
+      { keepVisible: "Dragged" }
+    )
+    expect(
+      layout.blocks.map(({ session, lane, lanes }) => [
+        session.title,
+        lane,
+        lanes,
+      ])
+    ).toEqual([
+      ["A", 0, 4],
+      ["B", 1, 4],
+      ["C", 2, 4],
+      ["Dragged", 3, 4],
+    ])
+    expect(layout.overflows.map((o) => o.sessions.map((s) => s.title))).toEqual(
+      [["Folded"]]
+    )
+  })
+
   it("still hatches the minutes visible sessions share with folded ones", () => {
     const layout = dayLayout([
       session("A", "08:45", 120),

@@ -1,4 +1,4 @@
-import { MINUTES_PER_DAY } from "./schedule"
+import { LAST_START, MINUTES_PER_DAY, STEP_MINUTES } from "./schedule"
 
 /** What the session dialog holds while the user types: raw field text. */
 export type SessionDraft = {
@@ -16,8 +16,6 @@ export type DraftResult =
   | { ok: false; errors: DraftErrors }
 
 export const MAX_TITLE_LENGTH = 80
-const STEP_MINUTES = 5
-const LAST_START = MINUTES_PER_DAY - STEP_MINUTES
 
 /** Minutes from midnight for a 24-hour "H:mm" or "HH:mm" time of day. */
 export function parseTime(text: string): number | undefined {
