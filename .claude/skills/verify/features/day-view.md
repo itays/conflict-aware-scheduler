@@ -1,6 +1,6 @@
 # Day view
 
-The Day view draws the schedule on a vertical 24-hour grid, one pixel per minute, in the style of design board A. Each session is a block with its title and time range. Overlapping sessions sit side by side in lanes. Sessions in a conflict turn red, carry a warning icon and an `In conflict` label, and only the minutes they overlap another session are hatched. A red marker in the hour gutter spans each conflict. Past three lanes, the extra sessions fold into a `+N` link, which opens the Agenda filtered to their conflict. With `?conflict=<ids>` the conflict's blocks are highlighted under a bar with `Clear highlight`. A session running past midnight stops at the bottom of the grid with `continues tomorrow`. The grid scrolls on its own and opens just above the first session. Clicking a block opens the session dialog for that session. An empty day shows a `Nothing scheduled` empty state instead of the grid.
+The Day view draws the schedule on a vertical 24-hour grid, one pixel per minute, in the style of design board A. Each session is a block with its title and time range. Overlapping sessions sit side by side in lanes. Sessions in a conflict turn red, carry a warning icon and an `In conflict` label, and only the minutes they overlap another session are hatched. A red marker in the hour gutter spans each conflict. Past three lanes, the extra sessions fold into a `+N` link, which opens the Agenda filtered to their conflict. With `?conflict=<ids>` the conflict's blocks are highlighted under a bar with `Clear highlight`. A session running past midnight stops at the bottom of the grid with `continues tomorrow`. The grid scrolls on its own and opens just above the first session. Clicking a block opens the session dialog for that session, and dragging it moves its start (see [`drag.md`](drag.md)). An empty day shows a `Nothing scheduled` empty state instead of the grid.
 
 ## Sub-features
 
@@ -13,7 +13,8 @@ The Day view draws the schedule on a vertical 24-hour grid, one pixel per minute
 - `day-highlight`: with `?conflict=<ids>`, that conflict's blocks (and a `+N` holding any of them) get a ring and a hidden `Highlighted` label, a bar reads `Highlighting the conflict at HH:mm – HH:mm.`, and `Clear highlight` goes back to `?view=day`. See `conflict-resolution.md`.
 - `day-midnight`: `On-call handoff` reads `23:30 – 00:30` with `continues tomorrow` and a dashed bottom edge.
 - `day-opening-scroll`: after hydration the grid opens at 08:00, 30 minutes above the 08:30 `Standup sync`. With `?conflict=` it opens 30 minutes above the highlighted conflict's first session, as far as the grid can scroll.
-- `day-edit`: each block holds a button. Activating it opens `dialog "Edit session"` filled with that session.
+- `day-edit`: each block holds a button. Activating it (a click that moves under 5px, a tap, or Enter) opens `dialog "Edit session"` filled with that session.
+- `day-drag`: pressing a block and moving it moves the session's start. See [`drag.md`](drag.md).
 - `day-empty`: with no sessions, `region "Day"` holds `Nothing scheduled` and `button "Add the first session"`, and no `list "Sessions"`.
 
 ## How to get to it (user POV)
@@ -80,6 +81,6 @@ Preconditions:
 ## Gotchas
 
 - Before hydration the server-rendered grid sits at `00:00`. It jumps to `08:00` when React hydrates. `snap.mjs` waits for `networkidle`, so its screenshots show the hydrated state. A hand-written script must do the same.
-- Session blocks are absolutely positioned. Read their order from the ARIA snapshot (start order), not from screen position.
+- Session blocks are absolutely positioned. Read their order from the ARIA snapshot (start order), not from screen position. A block being dragged keeps its original `top` and moves by a `transform`.
 - The Agenda's conflict cards also hold lists named `Sessions`. Scope the Day list as `region "Day"` → `list "Sessions"`.
 - A session ending exactly at `24:00` does not get `continues tomorrow`. Only one ending after midnight does.

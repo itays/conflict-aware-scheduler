@@ -1,7 +1,8 @@
+import { DndContext, useDraggable } from "@dnd-kit/core"
 import { Link } from "@tanstack/react-router"
 import { cn } from "cn"
 import { ArrowDownIcon, TriangleAlertIcon } from "lucide-react"
-import { useEffect, useRef } from "react"
+import { type CSSProperties, useEffect, useRef } from "react"
 import {
   type DayBlock,
   type DayOverflow,
@@ -22,6 +23,7 @@ import {
   conflictParam,
   type SessionEditing,
 } from "./scheduler-page"
+import { useSessionDrag } from "./use-session-drag"
 
 /** One pixel per minute: an hour row is 60px tall. */
 const PX_PER_MINUTE = 1
@@ -41,8 +43,17 @@ export function DayView({
   focus,
 }: SessionEditing & ConflictFocus) {
   const { schedule } = useSchedule()
-  const layout = dayLayout(schedule)
-  const focused = focus && conflictsInvolving(schedule, focus)
+  const { drag, contextProps, announcerRef } = useSessionDrag(PX_PER_MINUTE)
+  // While dragging, lay the day out as if the session already sat at its new
+  // start, so lanes, hatching, gutter markers and the highlight follow every
+  // step.
+  const previewSchedule = drag
+    ? schedule.map((s) =>
+        s.id === drag.session.id ? { ...s, start: drag.start } : s
+      )
+    : schedule
+  const layout = dayLayout(previewSchedule, { keepVisible: drag?.session.id })
+  const focused = focus && conflictsInvolving(previewSchedule, focus)
   const highlighted = new Set(
     focused?.flatMap((conflict) => conflict.sessions.map((s) => s.id))
   )
@@ -79,79 +90,97 @@ export function DayView({
       {schedule.length === 0 ? (
         <EmptySchedule onAddSession={onAddSession} />
       ) : (
-        <div
-          ref={scroller}
-          className="h-[calc(100svh-9rem)] min-h-96 overflow-y-auto rounded-xl border bg-card py-3"
-        >
+        <DndContext {...contextProps}>
+          <div ref={announcerRef} hidden />
           <div
-            className="relative flex"
-            style={{ height: px(MINUTES_PER_DAY) }}
+            ref={scroller}
+            className="h-[calc(100svh-9rem)] min-h-96 overflow-y-auto rounded-xl border bg-card py-3"
           >
-            <div className="relative w-14 shrink-0">
-              <div aria-hidden>
-                {HOURS.map((hour) => (
-                  <span
-                    key={hour}
-                    className="absolute right-3 -translate-y-1/2 text-xs text-muted-foreground tabular-nums"
-                    style={{ top: px(hour * 60) }}
-                  >
-                    {formatTime(hour * 60)}
-                  </span>
-                ))}
-              </div>
-              <ol
-                aria-label="Conflicts"
-                className="absolute inset-y-0 right-0 w-1"
-              >
-                {layout.conflictMarkers.map(({ start, end }) => {
-                  const label = `Conflict ${formatTimeRange(start, end)}`
-                  return (
-                    <li
-                      key={start}
-                      title={label}
-                      className="absolute right-0 w-1 rounded-full bg-destructive"
-                      style={{ top: px(start), height: px(end - start) }}
+            <div
+              className="relative flex"
+              style={{ height: px(MINUTES_PER_DAY) }}
+            >
+              <div className="relative w-14 shrink-0">
+                <div aria-hidden>
+                  {HOURS.map((hour) => (
+                    <span
+                      key={hour}
+                      className="absolute right-3 -translate-y-1/2 text-xs text-muted-foreground tabular-nums"
+                      style={{ top: px(hour * 60) }}
                     >
-                      <span className="sr-only">{label}</span>
-                    </li>
-                  )
-                })}
-              </ol>
-            </div>
-            <div className="relative flex-1 border-l">
-              <div aria-hidden>
-                {HOURS.map((hour) => (
-                  <div
-                    key={hour}
-                    className="absolute inset-x-0 border-t border-dashed first:border-solid"
-                    style={{ top: px(hour * 60) }}
-                  />
-                ))}
+                      {formatTime(hour * 60)}
+                    </span>
+                  ))}
+                </div>
+                {drag && (
+                  <span
+                    aria-hidden
+                    data-drag-label
+                    className="absolute right-1 z-10 -translate-y-1/2 rounded-sm bg-primary px-1 text-xs font-medium text-primary-foreground tabular-nums"
+                    style={{ top: px(drag.start) }}
+                  >
+                    {formatTime(drag.start)}
+                  </span>
+                )}
+                <ol
+                  aria-label="Conflicts"
+                  className="absolute inset-y-0 right-0 w-1"
+                >
+                  {layout.conflictMarkers.map(({ start, end }) => {
+                    const label = `Conflict ${formatTimeRange(start, end)}`
+                    return (
+                      <li
+                        key={start}
+                        title={label}
+                        className="absolute right-0 w-1 rounded-full bg-destructive"
+                        style={{ top: px(start), height: px(end - start) }}
+                      >
+                        <span className="sr-only">{label}</span>
+                      </li>
+                    )
+                  })}
+                </ol>
               </div>
-              <div className="absolute inset-y-0 right-2 left-0">
-                <ol aria-label="Sessions" className="absolute inset-0">
-                  {layout.blocks.map((block) => (
-                    <SessionBlock
-                      key={block.session.id}
-                      block={block}
-                      highlighted={highlighted.has(block.session.id)}
-                      onEdit={onEditSession}
+              <div className="relative flex-1 border-l">
+                <div aria-hidden>
+                  {HOURS.map((hour) => (
+                    <div
+                      key={hour}
+                      className="absolute inset-x-0 border-t border-dashed first:border-solid"
+                      style={{ top: px(hour * 60) }}
                     />
                   ))}
-                </ol>
-                {layout.overflows.map((overflow) => (
-                  <OverflowLink
-                    key={overflow.top}
-                    overflow={overflow}
-                    highlighted={overflow.sessions.some((s) =>
-                      highlighted.has(s.id)
-                    )}
-                  />
-                ))}
+                </div>
+                <div className="absolute inset-y-0 right-2 left-0">
+                  <ol aria-label="Sessions" className="absolute inset-0">
+                    {layout.blocks.map((block) => (
+                      <SessionBlock
+                        key={block.session.id}
+                        block={block}
+                        highlighted={highlighted.has(block.session.id)}
+                        draggedFrom={
+                          block.session.id === drag?.session.id
+                            ? drag.session.start
+                            : undefined
+                        }
+                        onEdit={onEditSession}
+                      />
+                    ))}
+                  </ol>
+                  {layout.overflows.map((overflow) => (
+                    <OverflowLink
+                      key={overflow.top}
+                      overflow={overflow}
+                      highlighted={overflow.sessions.some((s) =>
+                        highlighted.has(s.id)
+                      )}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </DndContext>
       )}
     </section>
   )
@@ -189,10 +218,22 @@ function OverflowLink({
   )
 }
 
-/** Places an item in its lane, leaving a hairline between neighbours. */
-function laneStyle({ top, bottom, lane, lanes }: LanePlacement) {
+/**
+ * Places an item in its lane, leaving a hairline between neighbours. A block
+ * being dragged keeps its original top (`draggedFrom`) and is shifted by a
+ * transform: dnd-kit measures it ignoring transforms and would subtract any
+ * move of its top from the drag distance.
+ */
+function laneStyle(
+  { top, bottom, lane, lanes }: LanePlacement,
+  draggedFrom?: number
+): CSSProperties {
   return {
-    top: px(top),
+    top: px(draggedFrom ?? top),
+    transform:
+      draggedFrom === undefined
+        ? undefined
+        : `translateY(${px(top - draggedFrom)})`,
     height: `calc(${px(bottom - top)} - 1px)`,
     left: `calc(${(lane / lanes) * 100}% + 2px)`,
     width: `calc(${100 / lanes}% - 4px)`,
@@ -202,16 +243,22 @@ function laneStyle({ top, bottom, lane, lanes }: LanePlacement) {
 function SessionBlock({
   block,
   highlighted,
+  draggedFrom,
   onEdit,
 }: {
   block: DayBlock
   highlighted: boolean
+  /** The start the session had before the drag in progress, if dragged. */
+  draggedFrom?: number
   onEdit: SessionEditing["onEditSession"]
 }) {
   const { session, inConflict } = block
   const timeRange = formatTimeRange(session.start, sessionEnd(session))
+  const { setNodeRef, listeners } = useDraggable({ id: session.id })
+  const dragging = draggedFrom !== undefined
   return (
     <li
+      ref={setNodeRef}
       // Short sessions are too small for their text; the tooltip keeps it.
       title={`${session.title}, ${timeRange}`}
       className={cn(
@@ -220,15 +267,21 @@ function SessionBlock({
         inConflict
           ? "border-destructive/70 bg-destructive/10 text-destructive"
           : "border-session-border bg-session text-session-foreground",
-        highlighted && cn(HIGHLIGHT_RING, "z-10")
+        highlighted && HIGHLIGHT_RING,
+        // The dragged block rides above highlighted ones.
+        dragging ? "z-20 shadow-lg" : highlighted && "z-10"
       )}
-      style={laneStyle(block)}
+      style={laneStyle(block, draggedFrom)}
     >
       <button
         type="button"
         data-session-id={session.id}
+        {...listeners}
         onClick={(event) => onEdit(session, event.currentTarget)}
-        className="relative block size-full cursor-pointer text-left outline-none hover:bg-foreground/5 focus-visible:ring-3 focus-visible:ring-ring/60 focus-visible:ring-inset"
+        className={cn(
+          "relative block size-full cursor-pointer touch-manipulation text-left outline-none select-none [-webkit-touch-callout:none] hover:bg-foreground/5 focus-visible:ring-3 focus-visible:ring-ring/60 focus-visible:ring-inset",
+          dragging && "cursor-grabbing"
+        )}
       >
         {block.overlapRanges.map((range) => (
           <span

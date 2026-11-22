@@ -6,9 +6,9 @@ The header shows how much needs attention: the number of conflicts and the numbe
 
 - `summary-counts`: the conflict count and affected-session count match the sample day.
 - `summary-every-view`: the same summary shows in the Day view and the Agenda.
-- `summary-day-marks`: the Day view marks exactly the counted sessions `In conflict` and shows one gutter marker per counted conflict.
+- `summary-day-marks`: the Day view marks exactly the counted sessions `In conflict` and shows one gutter marker per counted conflict. Mid-drag, the marks follow the dragged position while the summary keeps the saved schedule until the drop.
 - `summary-cards-agree`: the Agenda shows one card per counted conflict, holding exactly the counted sessions and each overlap's shared minutes.
-- `summary-live`: the summary follows every add, edit, delete, move to a free slot and `Clear day`, reading `No conflicts` on an empty day.
+- `summary-live`: the summary follows every add, edit, delete, move to a free slot, drag drop and `Clear day`, reading `No conflicts` on an empty day.
 - `summary-link`: with conflicts, the summary is a link (same name) to `?view=agenda` with no filter. With none it is plain text. It stays inside `role="status"`, so count changes are still announced.
 
 ## How to get to it (user POV)
@@ -21,7 +21,7 @@ The header shows how much needs attention: the number of conflicts and the numbe
 Preconditions:
 
 - Baseline preconditions from the README.
-- A fresh load, so `sample-day.ts` is the schedule. Sessions added or changed through the dialog are not in the oracle.
+- A fresh load, so `sample-day.ts` is the schedule. Sessions added, changed or dragged after the load are not in the oracle.
 
 - **Full proof.** Run `node .claude/skills/verify/scripts/agenda-conflicts.mjs "$URL" "$ARTIFACTS/conflict-summary"`. It prints `PASS: "2 conflicts · 5 sessions" with 2 matching conflict cards and Day view marks` and exits 0.
   - It reads the summary on `/` and again after clicking `Agenda` in the header's `View` switch.
@@ -30,6 +30,7 @@ Preconditions:
   - The evidence is `day.png` and `day.aria.yaml` (before the click), plus `agenda.png`, `agenda.aria.yaml` and `report.json` (after it).
 - **Live updates (`summary-live`).** Run the session dialog proof (`session-dialog.md`). After each add, edit, delete and `Clear day`, it checks the header against its own oracle over the edited schedule.
 - **The link and moves.** The conflict resolution proof (`conflict-resolution.md`) clicks the summary from the Day view and checks the header after moving a session to its free slot.
+- **Drag drops.** The drag proof (`drag.md`) checks the header after each drop against its own oracle, and checks that the summary does not move mid-drag.
 - **Read a failure.** On exit 1, open `$ARTIFACTS/conflict-summary/report.json`. `mismatches[]` names each check that failed, with `actual` and `expected`. If a step could not run at all, `failedStep` and `error` say which and why, and `failure.png` shows the page at that moment.
 
 ## Gotchas

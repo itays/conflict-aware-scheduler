@@ -40,7 +40,14 @@ export type DayLayout = {
 /** Lanes shown side by side before the rest fold into one overflow column. */
 const MAX_LANES = 3
 
-export function dayLayout(schedule: Schedule): DayLayout {
+/**
+ * `keepVisible` names a session that must never fold into "+N", such as one
+ * being dragged: it takes the overflow lane and is drawn over the "+N".
+ */
+export function dayLayout(
+  schedule: Schedule,
+  { keepVisible }: { keepVisible?: Session["id"] } = {}
+): DayLayout {
   const blocks: DayBlock[] = []
   const overflows: DayOverflow[] = []
 
@@ -51,13 +58,13 @@ export function dayLayout(schedule: Schedule): DayLayout {
     const hidden: Session[] = []
 
     group.forEach((session, index) => {
-      if (laneOf[index] >= MAX_LANES) {
+      if (laneOf[index] >= MAX_LANES && session.id !== keepVisible) {
         hidden.push(session)
         return
       }
       blocks.push({
         session,
-        lane: laneOf[index],
+        lane: Math.min(laneOf[index], MAX_LANES),
         lanes: columns,
         top: session.start,
         bottom: clampToDay(sessionEnd(session)),

@@ -36,5 +36,6 @@ Each feature file starts with an H1 and one paragraph on the user-visible behavi
 - [Agenda view](./agenda-view.md): the sample day in start order, with free slots, back-to-back notes, conflict cards and the past-midnight session.
 - [Conflict resolution](./conflict-resolution.md): moving a card session to its next free slot, `No free slot today`, `Edit`, `Show in Day view` with its highlight, and the `conflict` filter opened by the summary and `+N`.
 - [View parameter](./view-param.md): the `view` and `conflict` search parameters, the `day` default, unknown values, and the header's Day/Agenda switch.
+- [Drag to move](./drag.md): dragging a Day block by mouse, pen or touch in 15-minute steps, with the live label, live conflict marks, clamping, Esc, and the drop.
 - [Session dialog](./session-dialog.md): adding, editing and deleting sessions through one dialog, its overlap preview and validation, focus return, and `Clear day` with the empty states.
 - [Theme](./theme.md): Light, Dark and System themes from the header menu.
