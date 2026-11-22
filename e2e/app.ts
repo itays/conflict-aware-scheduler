@@ -12,7 +12,6 @@ export function dayBlock(page: Page, title: string) {
     .getByRole("listitem", { name: new RegExp(`^${title},`) })
 }
 
-/** The Day view's scrolling time grid. */
 export function dayGrid(page: Page) {
   return page.getByRole("region", { name: "Day" }).locator(".overflow-y-auto")
 }
