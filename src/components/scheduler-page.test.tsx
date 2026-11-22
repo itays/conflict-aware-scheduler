@@ -2,6 +2,10 @@ import { screen, within } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 import { renderApp } from "@/test/render-app"
 
+function dayView() {
+  return screen.queryByRole("region", { name: "Day" })
+}
+
 function viewSwitch() {
   return within(screen.getByRole("navigation", { name: "View" }))
 }
@@ -9,7 +13,7 @@ function viewSwitch() {
 describe("view switch", () => {
   it("opens on the Day view when no view is given", async () => {
     await renderApp("/")
-    expect(screen.getByRole("list", { name: "Sessions" })).toBeInTheDocument()
+    expect(dayView()).toBeInTheDocument()
     expect(viewSwitch().getByRole("link", { name: "Day" })).toHaveAttribute(
       "aria-current",
       "page"
@@ -24,11 +28,11 @@ describe("view switch", () => {
       await screen.findByRole("list", { name: "Agenda" })
     ).toBeInTheDocument()
     expect(router.state.location.search).toEqual({ view: "agenda" })
-    expect(screen.queryByRole("list", { name: "Sessions" })).toBeNull()
+    expect(dayView()).toBeNull()
 
     await user.click(viewSwitch().getByRole("link", { name: "Day" }))
     expect(
-      await screen.findByRole("list", { name: "Sessions" })
+      await screen.findByRole("region", { name: "Day" })
     ).toBeInTheDocument()
     expect(router.state.location.search).toEqual({ view: "day" })
   })
@@ -41,7 +45,7 @@ describe("view switch", () => {
     await user.keyboard("{Enter}")
 
     expect(
-      await screen.findByRole("list", { name: "Sessions" })
+      await screen.findByRole("region", { name: "Day" })
     ).toBeInTheDocument()
     expect(router.state.location.search).toEqual({ view: "day" })
   })
