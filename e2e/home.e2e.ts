@@ -1,20 +1,19 @@
 import { expect, test } from "@playwright/test"
 
-test("home page renders and hydrates", { tag: "@smoke" }, async ({ page }) => {
+test("app loads the sample day", { tag: "@smoke" }, async ({ page }) => {
   const pageErrors: Error[] = []
   page.on("pageerror", (error) => pageErrors.push(error))
 
   await page.goto("/")
 
-  await expect(page).toHaveTitle("TanStack Start Starter")
-  await expect(
-    page.getByRole("heading", { name: "Project ready!" })
-  ).toBeVisible()
+  await expect(page).toHaveTitle("Scheduler")
+  await expect(page.getByRole("status")).toHaveText("2 conflicts · 5 sessions")
 
-  const counter = page.getByRole("button", { name: "Count: 0" })
-  await expect(counter).toBeEnabled()
-  await counter.click()
-  await expect(page.getByRole("button", { name: "Count: 1" })).toBeVisible()
+  await page.getByRole("link", { name: "Open the Agenda" }).click()
+  await expect(page).toHaveURL(/view=agenda/)
+  await expect(
+    page.getByRole("region", { name: "3 sessions overlap 10:30 – 11:15" })
+  ).toBeVisible()
 
   expect(pageErrors).toEqual([])
 })

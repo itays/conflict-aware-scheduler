@@ -1,35 +1,57 @@
-import { createFileRoute } from "@tanstack/react-router"
-import { useEffect, useState } from "react"
+import { createFileRoute, Link } from "@tanstack/react-router"
+import { CalendarDaysIcon } from "lucide-react"
+import { z } from "zod"
+import { AgendaView } from "@/components/agenda-view"
+import { ConflictSummary } from "@/components/conflict-summary"
 import { ModeToggle } from "@/components/mode-toggle"
-import { Button } from "@/components/ui/button"
+import { ScheduleProvider } from "@/components/schedule-provider"
 
-export const Route = createFileRoute("/")({ component: App })
+const searchSchema = z.object({
+  view: z.enum(["day", "agenda"]).default("day").catch("day"),
+})
 
-function App() {
-  const [hydrated, setHydrated] = useState(false)
-  const [count, setCount] = useState(0)
+export const Route = createFileRoute("/")({
+  validateSearch: searchSchema,
+  component: Home,
+})
 
-  useEffect(() => setHydrated(true), [])
+function Home() {
+  const { view } = Route.useSearch()
 
   return (
-    <div className="relative flex min-h-svh p-6">
-      <div className="absolute top-6 right-6">
-        <ModeToggle />
+    <ScheduleProvider>
+      <div className="flex min-h-svh flex-col">
+        <header className="flex flex-wrap items-center gap-3 border-b px-4 py-3 sm:px-6">
+          <h1 className="flex items-center gap-2 font-semibold">
+            <span className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <CalendarDaysIcon aria-hidden className="size-4" />
+            </span>
+            Scheduler
+          </h1>
+          <div className="ml-auto flex items-center gap-2">
+            <ConflictSummary />
+            <ModeToggle />
+          </div>
+        </header>
+        <main className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6">
+          {view === "agenda" ? <AgendaView /> : <DayViewPlaceholder />}
+        </main>
       </div>
-      <div className="flex max-w-md min-w-0 flex-col gap-4 text-sm leading-loose">
-        <div>
-          <h1 className="font-medium">Project ready!</h1>
-          <p>You may now add components and start building.</p>
-          <p>We&apos;ve already added the button component for you.</p>
-          <Button
-            className="mt-2"
-            disabled={!hydrated}
-            onClick={() => setCount((value) => value + 1)}
-          >
-            Count: {count}
-          </Button>
-        </div>
-      </div>
-    </div>
+    </ScheduleProvider>
+  )
+}
+
+function DayViewPlaceholder() {
+  return (
+    <p className="text-sm text-muted-foreground">
+      The Day view is on its way.{" "}
+      <Link
+        to="/"
+        search={{ view: "agenda" }}
+        className="font-medium text-primary underline-offset-4 hover:underline"
+      >
+        Open the Agenda
+      </Link>
+    </p>
   )
 }
