@@ -10,7 +10,9 @@ import {
 } from "@/schedule/day-layout"
 import { MINUTES_PER_DAY, sessionEnd } from "@/schedule/schedule"
 import { formatTime, formatTimeRange } from "@/schedule/time"
+import { EmptySchedule } from "./empty-schedule"
 import { useSchedule } from "./schedule-provider"
+import type { SessionEditing } from "./scheduler-page"
 
 /** One pixel per minute: an hour row is 60px tall. */
 const PX_PER_MINUTE = 1
@@ -24,7 +26,7 @@ const SCROLL_LEAD_MINUTES = 30
 /** Blocks at least this tall put the time range under the title. */
 const STACKED_BLOCK_MINUTES = 45
 
-export function DayView() {
+export function DayView({ onAddSession, onEditSession }: SessionEditing) {
   const { schedule } = useSchedule()
   const layout = dayLayout(schedule)
 
@@ -45,65 +47,76 @@ export function DayView() {
       <h2 id="day-heading" className="sr-only">
         Day
       </h2>
-      <div
-        ref={scroller}
-        className="h-[calc(100svh-9rem)] min-h-96 overflow-y-auto rounded-xl border bg-card py-3"
-      >
-        <div className="relative flex" style={{ height: px(MINUTES_PER_DAY) }}>
-          <div className="relative w-14 shrink-0">
-            <div aria-hidden>
-              {HOURS.map((hour) => (
-                <span
-                  key={hour}
-                  className="absolute right-3 -translate-y-1/2 text-xs text-muted-foreground tabular-nums"
-                  style={{ top: px(hour * 60) }}
-                >
-                  {formatTime(hour * 60)}
-                </span>
-              ))}
-            </div>
-            <ol
-              aria-label="Conflicts"
-              className="absolute inset-y-0 right-0 w-1"
-            >
-              {layout.conflictMarkers.map(({ start, end }) => {
-                const label = `Conflict ${formatTimeRange(start, end)}`
-                return (
-                  <li
-                    key={start}
-                    title={label}
-                    className="absolute right-0 w-1 rounded-full bg-destructive"
-                    style={{ top: px(start), height: px(end - start) }}
+      {schedule.length === 0 ? (
+        <EmptySchedule onAddSession={onAddSession} />
+      ) : (
+        <div
+          ref={scroller}
+          className="h-[calc(100svh-9rem)] min-h-96 overflow-y-auto rounded-xl border bg-card py-3"
+        >
+          <div
+            className="relative flex"
+            style={{ height: px(MINUTES_PER_DAY) }}
+          >
+            <div className="relative w-14 shrink-0">
+              <div aria-hidden>
+                {HOURS.map((hour) => (
+                  <span
+                    key={hour}
+                    className="absolute right-3 -translate-y-1/2 text-xs text-muted-foreground tabular-nums"
+                    style={{ top: px(hour * 60) }}
                   >
-                    <span className="sr-only">{label}</span>
-                  </li>
-                )
-              })}
-            </ol>
-          </div>
-          <div className="relative flex-1 border-l">
-            <div aria-hidden>
-              {HOURS.map((hour) => (
-                <div
-                  key={hour}
-                  className="absolute inset-x-0 border-t border-dashed first:border-solid"
-                  style={{ top: px(hour * 60) }}
-                />
-              ))}
-            </div>
-            <div className="absolute inset-y-0 right-2 left-0">
-              <ol aria-label="Sessions" className="absolute inset-0">
-                {layout.blocks.map((block) => (
-                  <SessionBlock key={block.session.id} block={block} />
+                    {formatTime(hour * 60)}
+                  </span>
                 ))}
+              </div>
+              <ol
+                aria-label="Conflicts"
+                className="absolute inset-y-0 right-0 w-1"
+              >
+                {layout.conflictMarkers.map(({ start, end }) => {
+                  const label = `Conflict ${formatTimeRange(start, end)}`
+                  return (
+                    <li
+                      key={start}
+                      title={label}
+                      className="absolute right-0 w-1 rounded-full bg-destructive"
+                      style={{ top: px(start), height: px(end - start) }}
+                    >
+                      <span className="sr-only">{label}</span>
+                    </li>
+                  )
+                })}
               </ol>
-              {layout.overflows.map((overflow) => (
-                <OverflowLink key={overflow.top} overflow={overflow} />
-              ))}
+            </div>
+            <div className="relative flex-1 border-l">
+              <div aria-hidden>
+                {HOURS.map((hour) => (
+                  <div
+                    key={hour}
+                    className="absolute inset-x-0 border-t border-dashed first:border-solid"
+                    style={{ top: px(hour * 60) }}
+                  />
+                ))}
+              </div>
+              <div className="absolute inset-y-0 right-2 left-0">
+                <ol aria-label="Sessions" className="absolute inset-0">
+                  {layout.blocks.map((block) => (
+                    <SessionBlock
+                      key={block.session.id}
+                      block={block}
+                      onEdit={onEditSession}
+                    />
+                  ))}
+                </ol>
+                {layout.overflows.map((overflow) => (
+                  <OverflowLink key={overflow.top} overflow={overflow} />
+                ))}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </section>
   )
 }
@@ -137,7 +150,13 @@ function laneStyle({ top, bottom, lane, lanes }: LanePlacement) {
   }
 }
 
-function SessionBlock({ block }: { block: DayBlock }) {
+function SessionBlock({
+  block,
+  onEdit,
+}: {
+  block: DayBlock
+  onEdit: SessionEditing["onEditSession"]
+}) {
   const { session, inConflict } = block
   const timeRange = formatTimeRange(session.start, sessionEnd(session))
   return (
@@ -153,42 +172,49 @@ function SessionBlock({ block }: { block: DayBlock }) {
       )}
       style={laneStyle(block)}
     >
-      {block.overlapRanges.map((range) => (
-        <span
-          key={range.start}
-          aria-hidden
-          className="absolute inset-x-0 bg-hatch"
-          style={{
-            top: px(range.start - block.top),
-            height: px(range.end - range.start),
-          }}
-        />
-      ))}
-      <div
-        className={cn(
-          "relative flex gap-x-2 px-2 py-1 leading-tight",
-          block.bottom - block.top >= STACKED_BLOCK_MINUTES
-            ? "flex-col"
-            : "flex-wrap items-baseline"
-        )}
+      <button
+        type="button"
+        data-session-id={session.id}
+        onClick={(event) => onEdit(session, event.currentTarget)}
+        className="relative block size-full cursor-pointer text-left outline-none hover:bg-foreground/5 focus-visible:ring-3 focus-visible:ring-ring/60 focus-visible:ring-inset"
       >
-        <span className="flex min-w-0 items-center gap-1 font-medium">
-          {inConflict && (
-            <>
-              <TriangleAlertIcon aria-hidden className="size-3 shrink-0" />
-              <span className="sr-only">In conflict</span>
-            </>
+        {block.overlapRanges.map((range) => (
+          <span
+            key={range.start}
+            aria-hidden
+            className="absolute inset-x-0 bg-hatch"
+            style={{
+              top: px(range.start - block.top),
+              height: px(range.end - range.start),
+            }}
+          />
+        ))}
+        <span
+          className={cn(
+            "relative flex gap-x-2 px-2 py-1 leading-tight",
+            block.bottom - block.top >= STACKED_BLOCK_MINUTES
+              ? "flex-col"
+              : "flex-wrap items-baseline"
           )}
-          <span className="truncate">{session.title}</span>
-        </span>
-        <span className="truncate tabular-nums opacity-85">{timeRange}</span>
-        {block.continuesTomorrow && (
-          <span className="flex items-center gap-1 font-medium">
-            <ArrowDownIcon aria-hidden className="size-3" />
-            continues tomorrow
+        >
+          <span className="flex min-w-0 items-center gap-1 font-medium">
+            {inConflict && (
+              <>
+                <TriangleAlertIcon aria-hidden className="size-3 shrink-0" />
+                <span className="sr-only">In conflict</span>
+              </>
+            )}
+            <span className="truncate">{session.title}</span>
           </span>
-        )}
-      </div>
+          <span className="truncate tabular-nums opacity-85">{timeRange}</span>
+          {block.continuesTomorrow && (
+            <span className="flex items-center gap-1 font-medium">
+              <ArrowDownIcon aria-hidden className="size-3" />
+              continues tomorrow
+            </span>
+          )}
+        </span>
+      </button>
     </li>
   )
 }

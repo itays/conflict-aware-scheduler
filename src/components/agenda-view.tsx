@@ -12,7 +12,9 @@ import {
   sortByStart,
 } from "@/schedule/schedule"
 import { formatDuration, formatTimeRange } from "@/schedule/time"
+import { EmptySchedule } from "./empty-schedule"
 import { useSchedule } from "./schedule-provider"
+import type { SessionEditing } from "./scheduler-page"
 
 type AgendaItem =
   | { kind: "session"; start: number; session: Session }
@@ -51,7 +53,7 @@ function agendaItems(schedule: Schedule): AgendaItem[] {
   return items.sort((a, b) => a.start - b.start)
 }
 
-export function AgendaView() {
+export function AgendaView({ onAddSession, onEditSession }: SessionEditing) {
   const { schedule } = useSchedule()
 
   return (
@@ -59,28 +61,33 @@ export function AgendaView() {
       <h2 id="agenda-heading" className="sr-only">
         Agenda
       </h2>
-      <ol aria-labelledby="agenda-heading" className="flex flex-col gap-2">
-        {agendaItems(schedule).map((item, index, items) => (
-          <li key={`${item.kind}-${item.start}`}>
-            {/* Two neighbours with no free slot between them can only be
+      {schedule.length === 0 ? (
+        <EmptySchedule onAddSession={onAddSession} />
+      ) : (
+        <ol aria-labelledby="agenda-heading" className="flex flex-col gap-2">
+          {agendaItems(schedule).map((item, index, items) => (
+            <li key={`${item.kind}-${item.start}`}>
+              {/* Two neighbours with no free slot between them can only be
                 back-to-back: had they shared a minute, they would be one
                 conflict. */}
-            {index > 0 &&
-              item.kind !== "free" &&
-              items[index - 1].kind !== "free" && <BackToBackNote />}
-            {item.kind === "session" && (
-              <SessionRow
-                session={item.session}
-                className="rounded-xl border"
-              />
-            )}
-            {item.kind === "conflict" && (
-              <ConflictCard conflict={item.conflict} />
-            )}
-            {item.kind === "free" && <FreeSlotRow slot={item.slot} />}
-          </li>
-        ))}
-      </ol>
+              {index > 0 &&
+                item.kind !== "free" &&
+                items[index - 1].kind !== "free" && <BackToBackNote />}
+              {item.kind === "session" && (
+                <SessionRow
+                  session={item.session}
+                  onEdit={onEditSession}
+                  className="rounded-xl border"
+                />
+              )}
+              {item.kind === "conflict" && (
+                <ConflictCard conflict={item.conflict} onEdit={onEditSession} />
+              )}
+              {item.kind === "free" && <FreeSlotRow slot={item.slot} />}
+            </li>
+          ))}
+        </ol>
+      )}
     </section>
   )
 }
@@ -100,39 +107,50 @@ function TimeRange({ start, end }: { start: number; end: number }) {
 
 function SessionRow({
   session,
+  onEdit,
   className,
 }: {
   session: Session
+  onEdit: SessionEditing["onEditSession"]
   className?: string
 }) {
   const end = sessionEnd(session)
   return (
-    <div
+    <button
+      type="button"
+      data-session-id={session.id}
+      onClick={(event) => onEdit(session, event.currentTarget)}
       className={cn(
-        "flex items-center gap-4 bg-card px-4 py-3 text-sm",
+        "flex w-full items-center gap-4 bg-card px-4 py-3 text-left text-sm outline-none hover:bg-muted/60 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset",
         className
       )}
     >
-      <div className="flex w-28 shrink-0 flex-col sm:w-32">
+      <span className="flex w-28 shrink-0 flex-col sm:w-32">
         <span className="font-medium">
           <TimeRange start={session.start} end={end} />
         </span>
         {end > MINUTES_PER_DAY && (
           <span className="text-xs text-chart-3">ends next day</span>
         )}
-      </div>
+      </span>
       <span aria-hidden className="size-2 shrink-0 rounded-xs bg-chart-2" />
-      <div className="flex min-w-0 flex-col">
+      <span className="flex min-w-0 flex-col">
         <span className="font-medium">{session.title}</span>
         <span className="text-xs text-muted-foreground">
           {formatDuration(session.duration)}
         </span>
-      </div>
-    </div>
+      </span>
+    </button>
   )
 }
 
-function ConflictCard({ conflict }: { conflict: Conflict }) {
+function ConflictCard({
+  conflict,
+  onEdit,
+}: {
+  conflict: Conflict
+  onEdit: SessionEditing["onEditSession"]
+}) {
   const headingId = `conflict-${conflict.sessions[0].id}`
   return (
     <section
@@ -150,7 +168,7 @@ function ConflictCard({ conflict }: { conflict: Conflict }) {
       <ul aria-label="Sessions" className="divide-y">
         {conflict.sessions.map((session) => (
           <li key={session.id}>
-            <SessionRow session={session} />
+            <SessionRow session={session} onEdit={onEdit} />
           </li>
         ))}
       </ul>

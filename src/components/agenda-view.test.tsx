@@ -9,7 +9,7 @@ function renderAgenda(initialSchedule?: Schedule) {
   render(
     <ScheduleProvider initialSchedule={initialSchedule}>
       <ConflictSummary />
-      <AgendaView />
+      <AgendaView onAddSession={() => {}} onEditSession={() => {}} />
     </ScheduleProvider>
   )
 }
@@ -70,9 +70,13 @@ describe("AgendaView on the sample day", () => {
 })
 
 describe("AgendaView on an empty day", () => {
-  it("shows the whole day free and no conflicts", () => {
+  it("shows an empty state with a way to add the first session", () => {
     renderAgenda([])
     expect(screen.getByRole("status")).toHaveTextContent("No conflicts")
-    expect(agendaRows()).toEqual(["00:00 – 24:00Free · 24 h"])
+    expect(screen.queryByRole("list", { name: "Agenda" })).toBeNull()
+    expect(screen.getByText("Nothing scheduled")).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: "Add the first session" })
+    ).toBeInTheDocument()
   })
 })
