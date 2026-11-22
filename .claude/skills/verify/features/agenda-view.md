@@ -13,7 +13,8 @@ The Agenda shows the day as text, in start order. It lists each session with its
 ## How to get to it (user POV)
 
 - Open `/?view=agenda` directly.
-- Open `/` and click `Open the Agenda` in the Day placeholder.
+- Open `/` and click `Agenda` in the header's `View` switch.
+- In the Day view, click a `+N` control (only on a day with more than three overlapping sessions).
 
 ## Driving it with Playwright
 
