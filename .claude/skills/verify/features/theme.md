@@ -7,7 +7,7 @@ The `Toggle theme` button in the header opens a menu of `Light`, `Dark` and `Sys
 - `theme-menu`: the `Toggle theme` button opens a menu with three radio items.
 - `theme-dark`: choosing `Dark` puts the `dark` class on `<html>` and darkens the page, including the Day view's session blocks (`--session*` tokens). The red of conflict blocks and hatching (`--destructive`) turns lighter so it still reads on the dark background.
 - `theme-system`: `System` follows the browser's colour scheme, live when it changes. It is the default with no stored choice.
-- `theme-no-flash`: a script in the page head applies the stored theme before React hydrates, so a reload in `Dark` never shows the light theme first.
+- `theme-no-flash`: an inline script at the top of the page body applies the stored theme before React hydrates, so a reload in `Dark` never shows the light theme first.
 
 ## How to get to it (user POV)
 

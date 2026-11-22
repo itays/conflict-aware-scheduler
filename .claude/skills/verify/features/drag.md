@@ -42,7 +42,7 @@ Preconditions:
   - in a Pixel 7 context it sends CDP touch events: a 400ms hold then a 30px move lands Standup on `09:00`; a quick swipe on Phone screen scrolls the grid and moves nothing; a tap opens the editor.
 - **Evidence.** `mid-drag.png`, `after-drop.png`, `clamp-top.png`, `clamp-bottom.png`, `fourth-lane.png`, `keyboard-mid.png`, `keyboard-clamp.png`, `touch-drag.png` and `report.json` (every check with its detail, plus page errors).
 - **Read a failure.** Open `report.json`. A step that threw is recorded as `step "<name>" ran`, with `failure.png`, or `failure-touch.png` for the touch steps.
-- **Production build.** `bun run test:e2e` runs `e2e/drag.e2e.ts` against the built app: a mouse drop that adds a conflict, Esc, the release after Esc, 26 arrow presses that scroll the grid and land exactly on `23:30`, and a pointer drag that auto-scrolls and changes lane without jumping.
+- **Production build.** `bun run test:e2e` runs `e2e/drag.e2e.ts` against the built app: a mouse drop that adds a conflict, Esc, the release after Esc, 26 arrow presses that scroll the grid and land exactly on `23:30`, a pointer drag that auto-scrolls and changes lane without jumping, a click that wobbles under 5px and still opens the editor, and, in a Pixel 7 context, a touch hold and drag, a swipe that scrolls without moving anything, and a tap that opens the editor.
 
 ## Gotchas
 

@@ -1,4 +1,11 @@
-import { expect, type Locator, type Page, test } from "@playwright/test"
+import {
+  devices,
+  expect,
+  type Locator,
+  type Page,
+  test,
+} from "@playwright/test"
+import { dayBlock, dayGrid, openHydrated } from "./app"
 
 /** Presses on a block and moves the mouse `dy` pixels (one per minute). */
 async function startDrag(page: Page, block: Locator, dy: number) {
@@ -12,15 +19,8 @@ async function startDrag(page: Page, block: Locator, dy: number) {
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/?view=day")
-  await page.waitForLoadState("networkidle")
+  await openHydrated(page, "?view=day")
 })
-
-function dayBlock(page: Page, title: string) {
-  return page
-    .getByRole("region", { name: "Day" })
-    .getByRole("listitem", { name: new RegExp(`^${title},`) })
-}
 
 test("dropping a session onto another adds a conflict", async ({ page }) => {
   const status = page.getByRole("status")
@@ -91,10 +91,7 @@ test("a drag that scrolled the grid keeps its place on changing lane", async ({
   // Panel wrap-up is held by its middle at the grid's bottom edge until the
   // grid stops scrolling. That point is 23:45 for its start; on the way it
   // joins On-call handoff's conflict and narrows to a lane.
-  const grid = await page
-    .getByRole("region", { name: "Day" })
-    .locator(".overflow-y-auto")
-    .boundingBox()
+  const grid = await dayGrid(page).boundingBox()
   if (!grid) throw new Error("Grid is not visible")
   const label = page.locator("[data-drag-label]")
   await dayBlock(page, "Panel wrap-up").scrollIntoViewIfNeeded()
@@ -118,4 +115,92 @@ test("a drag that scrolled the grid keeps its place on changing lane", async ({
   await expect(dayBlock(page, "Panel wrap-up")).toHaveAccessibleName(
     "Panel wrap-up, 23:55 – 00:40"
   )
+})
+
+test("a click that wobbles under 5px opens the editor", async ({ page }) => {
+  await startDrag(page, dayBlock(page, "Hiring sync"), 3)
+  await page.mouse.up()
+
+  const dialog = page.getByRole("dialog", { name: "Edit session" })
+  await expect(dialog.getByRole("textbox", { name: "Title" })).toHaveValue(
+    "Hiring sync"
+  )
+})
+
+test.describe("touch", () => {
+  const { defaultBrowserType: _, ...pixel7 } = devices["Pixel 7"]
+  test.use(pixel7)
+
+  /** Playwright's touchscreen can only tap, so drags go through CDP. */
+  async function finger(page: Page, block: Locator) {
+    const box = await block.boundingBox()
+    if (!box) throw new Error("Block is not visible")
+    const x = box.x + box.width / 2
+    const y = box.y + box.height / 2
+    const cdp = await page.context().newCDPSession(page)
+    const send = (type: "touchStart" | "touchMove" | "touchEnd", dy = 0) =>
+      cdp.send("Input.dispatchTouchEvent", {
+        type,
+        touchPoints: type === "touchEnd" ? [] : [{ x, y: y + dy }],
+      })
+    return {
+      down: () => send("touchStart"),
+      move: async (dy: number) => {
+        for (let i = 1; i <= 10; i++) await send("touchMove", (dy * i) / 10)
+      },
+      up: () => send("touchEnd"),
+    }
+  }
+
+  test("holding still for 250ms, then moving, drags the session", async ({
+    page,
+  }) => {
+    const touch = await finger(page, dayBlock(page, "Standup sync"))
+    await touch.down()
+    await page.waitForTimeout(400)
+    await touch.move(30)
+    await expect(page.locator("[data-drag-label]")).toHaveText("09:00")
+    await touch.up()
+
+    await expect(dayBlock(page, "Standup sync")).toHaveAccessibleName(
+      "Standup sync, 09:00 – 09:30"
+    )
+    await expect(page.getByRole("status")).toHaveText(
+      "3 conflicts · 7 sessions"
+    )
+    await expect(page.getByRole("dialog")).toHaveCount(0)
+  })
+
+  test("a quick swipe scrolls the grid and moves nothing", async ({ page }) => {
+    const grid = dayGrid(page)
+    const before = await grid.evaluate((el) => el.scrollTop)
+    const phoneScreen = dayBlock(page, "Phone screen — Maya Cohen")
+    const touch = await finger(page, phoneScreen)
+    await touch.down()
+    await touch.move(-150)
+    await touch.up()
+
+    await expect
+      .poll(() => grid.evaluate((el) => el.scrollTop), {
+        message: "the grid scrolled",
+      })
+      .toBeGreaterThan(before)
+    await expect(phoneScreen).toHaveAccessibleName(
+      "Phone screen — Maya Cohen, 09:00 – 10:00"
+    )
+    await expect(page.locator("[data-drag-label]")).toHaveCount(0)
+    await expect(page.getByRole("status")).toHaveText(
+      "2 conflicts · 5 sessions"
+    )
+  })
+
+  test("a tap opens the editor", async ({ page }) => {
+    await dayBlock(page, "Hiring sync").getByRole("button").tap()
+
+    await expect(
+      page
+        .getByRole("dialog", { name: "Edit session" })
+        .getByRole("textbox", { name: "Title" })
+    ).toHaveValue("Hiring sync")
+  })
 })

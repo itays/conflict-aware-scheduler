@@ -25,11 +25,11 @@ npm run test:e2e                      # end-to-end tests (Playwright, Chromium)
 npm run typecheck && npm run check    # TypeScript, then Biome format and lint
 ```
 
-`test:e2e` builds the app and serves the production build on port 4173 through workerd, the Cloudflare Workers runtime; `test:e2e:smoke` runs only the `@smoke` test, and `test:e2e:headed` and `test:e2e:ui` show the browser. CI (`.github/workflows/ci.yml`) runs lint, typecheck, unit tests, the build and the e2e smoke test on pull requests and pushes to `main`. A Husky pre-commit hook runs Biome on staged files, then typecheck and unit tests. `npm run check -- --write` applies Biome's safe fixes.
+`test:e2e` builds the app and serves the production build on port 4173 through workerd, the Cloudflare Workers runtime; `test:e2e:smoke` runs only the `@smoke` test, and `test:e2e:headed` and `test:e2e:ui` show the browser. CI (`.github/workflows/ci.yml`) runs lint, typecheck, unit tests, the build and the full e2e suite on pull requests and pushes to `main`. A Husky pre-commit hook runs Biome on staged files, then typecheck and unit tests. `npm run check -- --write` applies Biome's safe fixes.
 
 ## Deploy
 
-The app runs on Cloudflare Workers through `@cloudflare/vite-plugin`, configured in `wrangler.jsonc`. CI deploys every push to `main` after the checks and e2e smoke test pass, using the `CLOUDFLARE_API_TOKEN` repository secret. To deploy by hand, log in once with `npx wrangler login`, then run `npm run deploy`.
+The app runs on Cloudflare Workers through `@cloudflare/vite-plugin`, configured in `wrangler.jsonc`. CI deploys every push to `main` after the checks and e2e tests pass, using the `CLOUDFLARE_API_TOKEN` repository secret. To deploy by hand, log in once with `npx wrangler login`, then run `npm run deploy`.
 
 ## What it does
 
@@ -62,9 +62,9 @@ The vocabulary (Schedule, Session, Duration, Back-to-back, Overlap, Conflict, Fr
 - **Tests are chosen by layer:**
   - _Unit (Vitest)_: the edge-case matrix in the schedule module, where each case is one line of data. It covers back-to-back, contained, identical, a three-session chain, separate conflicts, past midnight, the 23:55 clamp, 15-minute drag rounding, next free slot found, none found and never conflicting, and every validation rule.
   - _Component (React Testing Library)_: user flows driven by role and label. Saving an overlapping session updates the summary and the cards, invalid input disables Save, Move to next free slot clears a conflict, and keyboard dragging moves a session and announces it.
-  - _End-to-end (Playwright)_: mouse drags and keyboard steps while the grid scrolls, which need the real layout jsdom does not have, plus a smoke test that the built app loads.
+  - _End-to-end (Playwright)_: what needs a real browser and the production build, which jsdom does not have. The redirect from `/` and the URL parameters across reloads, the stored theme applied before any app script runs, the grid's opening scroll and lane geometry, mouse, touch and keyboard drags, and focus after each dialog save and card move, plus a smoke test that the built app loads.
 
-  Tests assert what users can observe, never lane numbers or pixel positions.
+  Tests assert what users can observe, never lane numbers or fixed pixel positions.
 
 ## The extension: drag-and-drop
 
