@@ -34,6 +34,7 @@ Each feature file starts with an H1 and one paragraph on the user-visible behavi
 - [Conflict summary](./conflict-summary.md): the header count of conflicts and affected sessions, proved against the sample day together with the Day view's marks and the Agenda's cards.
 - [Day view](./day-view.md): the time grid with lanes, hatched overlap minutes, gutter markers, the `+N` overflow and the past-midnight cue.
 - [Agenda view](./agenda-view.md): the sample day in start order, with free slots, back-to-back notes, conflict cards and the past-midnight session.
-- [View parameter](./view-param.md): the `view` search parameter, its `day` default, unknown values, and the header's Day/Agenda switch.
+- [Conflict resolution](./conflict-resolution.md): moving a card session to its next free slot, `No free slot today`, `Edit`, `Show in Day view` with its highlight, and the `conflict` filter opened by the summary and `+N`.
+- [View parameter](./view-param.md): the `view` and `conflict` search parameters, the `day` default, unknown values, and the header's Day/Agenda switch.
 - [Session dialog](./session-dialog.md): adding, editing and deleting sessions through one dialog, its overlap preview and validation, focus return, and `Clear day` with the empty states.
 - [Theme](./theme.md): Light, Dark and System themes from the header menu.

@@ -1,11 +1,11 @@
 ---
 name: verify
-description: Drive the Conflict-Aware Scheduler web app (TanStack Start, single page at `/`) in a real Chromium browser and capture proof of what a user sees. Use to confirm a UI change works in the running app, to prove the header conflict summary, the Day view's conflict marks and the Agenda conflict cards match the sample day, to prove adding, editing, deleting and clearing sessions through the session dialog, or whenever a change touches the schedule module, the Day view, the Agenda, the session dialog, the header or routing and unit tests alone are not proof.
+description: Drive the Conflict-Aware Scheduler web app (TanStack Start, single page at `/`) in a real Chromium browser and capture proof of what a user sees. Use to confirm a UI change works in the running app, to prove the header conflict summary, the Day view's conflict marks and the Agenda conflict cards match the sample day, to prove adding, editing, deleting and clearing sessions through the session dialog, to prove resolving conflicts from the Agenda's cards (move to next free slot, Show in Day view, the conflict filter), or whenever a change touches the schedule module, the Day view, the Agenda, the session dialog, the header or routing and unit tests alone are not proof.
 ---
 
 # Verify the Conflict-Aware Scheduler
 
-The app is one web page. Users touch the header (title, conflict summary, Day/Agenda switch, `Clear day`, `New session`, theme toggle) and the main area, which shows the Day view's time grid (`?view=day`, the default) or the Agenda (`?view=agenda`). Clicking a session in either view, or `New session`, opens one shared session dialog. The schedule lives in memory and every page load starts from the sample day in `src/schedule/sample-day.ts`. Edits last until the next load, so there is no data directory and no seeding step: a reload is a reset.
+The app is one web page. Users touch the header (title, conflict summary, Day/Agenda switch, `Clear day`, `New session`, theme toggle) and the main area, which shows the Day view's time grid (`?view=day`, the default) or the Agenda (`?view=agenda`). An optional `conflict` parameter (comma-joined session ids) filters the Agenda to that conflict or highlights it in the Day view. Clicking a Day block, an Agenda row, a conflict card's `Edit`, or `New session` opens one shared session dialog. Conflict cards also move a session to its next free slot. The schedule lives in memory and every page load starts from the sample day in `src/schedule/sample-day.ts`. Edits last until the next load, so there is no data directory and no seeding step: a reload is a reset.
 
 The harness is Playwright's Chromium, driven by Node scripts in `scripts/`. Both are already installed by `bun install`. Every helper is run from the repo root.
 
@@ -66,6 +66,14 @@ node .claude/skills/verify/scripts/session-dialog.mjs "$URL" "$ARTIFACTS/session
 
 It prints one `ok`/`FAIL` line per check and ends with `PASS: N checks`, exiting 0. See [`features/session-dialog.md`](features/session-dialog.md).
 
+Resolving conflicts from the Agenda has its own proof, with a brute-force oracle for each session's next free slot:
+
+```sh
+node .claude/skills/verify/scripts/conflict-resolution.mjs "$URL" "$ARTIFACTS/conflict-resolution"
+```
+
+It prints one `ok`/`FAIL` line per check and ends with `PASS: N checks`, exiting 0. See [`features/conflict-resolution.md`](features/conflict-resolution.md).
+
 For any other page state, capture evidence with:
 
 ```sh
@@ -80,7 +88,7 @@ For a step-by-step interaction the scripts don't cover, write a short Node scrip
 
 | Handle                                              | What it is                                                                                  |
 | --------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `getByRole("status")`                               | header conflict summary: `2 conflicts · 5 sessions`, or `No conflicts`                      |
+| `getByRole("status")`                               | header conflict summary: `2 conflicts · 5 sessions`, or `No conflicts`. With conflicts it holds a link of the same name that opens `?view=agenda` |
 | `getByRole("button", { name: "New session" })`      | opens the session dialog empty                                                              |
 | `getByRole("button", { name: "Clear day" })`        | empties the schedule at once, with no confirmation                                          |
 | `getByRole("dialog", { name: "New session" })`      | the session dialog (`Edit session` when opened from a session); fields `Title`, `Start`     |
@@ -91,10 +99,12 @@ For a step-by-step interaction the scripts don't cover, write a short Node scrip
 | `getByRole("region", { name: "Day" })`              | the Day view's time grid                                                                    |
 | `day.getByRole("list", { name: "Sessions" })`       | the grid's session blocks, each a `listitem` named `<title>, HH:mm – HH:mm` holding a button that opens the session |
 | `getByRole("list", { name: "Conflicts" })`          | the gutter markers, one `Conflict HH:mm – HH:mm` item per conflict                          |
-| `getByRole("link", { name: /^\+\d+ more session/ })` | the `+N` control for sessions folded past three lanes; it opens the Agenda                  |
-| `getByRole("list", { name: "Agenda" })`             | the Agenda; each item is a free slot, a session or a conflict card, in start order. Each session row is a button that opens the session. Absent on an empty day |
-| `getByRole("region", { name: /sessions overlap/ })` | one conflict card                                                                           |
-| `card.getByRole("list", { name: "Sessions" })`      | that card's sessions                                                                        |
+| `getByRole("link", { name: /^\+\d+ more session/ })` | the `+N` control for sessions folded past three lanes; it opens the Agenda filtered to their conflict (`&conflict=<ids>`) |
+| `getByRole("link", { name: "Clear highlight" })`    | the Day view's focus bar (with `?conflict=`); back to `?view=day`. Highlighted blocks hold the hidden text `Highlighted` |
+| `getByRole("list", { name: "Agenda" })`             | the Agenda; each item is a free slot, a session or a conflict card, in start order. Each session row outside a card is a button that opens the session. Absent on an empty day |
+| `getByRole("link", { name: "Show all" })`           | the Agenda's focus bar (with `?conflict=`); back to `?view=agenda`                          |
+| `getByRole("region", { name: /sessions overlap/ })` | one conflict card, with a `Show in Day view` link                                           |
+| `card.getByRole("list", { name: "Sessions" })`      | that card's sessions; each item holds `Move to next free slot HH:mm – HH:mm` (or disabled `No free slot today`) and `Edit`, both described by the session title |
 | `card.getByRole("list", { name: "Overlaps" })`      | that card's overlaps, one `A × B` / `N min` pair per item                                   |
 
 ## Evidence
@@ -129,6 +139,7 @@ Cleanup stops the server's process group and deletes its state in `$TMPDIR/confl
 | `scripts/verify.sh`            | `verify.sh launch \| doctor RUN_ID \| url RUN_ID \| cleanup RUN_ID \| cleanup --all` |
 | `scripts/agenda-conflicts.mjs` | `node .claude/skills/verify/scripts/agenda-conflicts.mjs <base-url> <artifact-dir>`: exit 0 means PASS |
 | `scripts/session-dialog.mjs`   | `node .claude/skills/verify/scripts/session-dialog.mjs <base-url> <artifact-dir>`: exit 0 means PASS   |
+| `scripts/conflict-resolution.mjs` | `node .claude/skills/verify/scripts/conflict-resolution.mjs <base-url> <artifact-dir>`: exit 0 means PASS |
 | `scripts/snap.mjs`             | `node .claude/skills/verify/scripts/snap.mjs <url> <artifact-dir> <name> [light\|dark]`                |
 
 The `.mjs` helpers import `src/schedule/sample-day.ts` directly. That needs Node 23.6 or later, where TypeScript type stripping is on by default (this machine has Node 26).
