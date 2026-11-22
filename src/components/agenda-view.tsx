@@ -151,7 +151,7 @@ function ConflictCard({ conflict }: { conflict: Conflict }) {
         <span>{conflict.sessions.length} sessions overlap</span>{" "}
         <TimeRange start={conflict.start} end={conflict.end} />
       </h3>
-      <ul className="divide-y">
+      <ul aria-label="Sessions" className="divide-y">
         {conflict.sessions.map((session) => (
           <li key={session.id}>
             <SessionRow session={session} />
@@ -159,10 +159,16 @@ function ConflictCard({ conflict }: { conflict: Conflict }) {
         ))}
       </ul>
       <div className="border-t bg-muted/40 px-4 py-3 text-sm">
-        <h4 className="mb-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+        <h4
+          id={`${headingId}-overlaps`}
+          className="mb-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase"
+        >
           Overlaps
         </h4>
-        <ul className="flex flex-col gap-1">
+        <ul
+          aria-labelledby={`${headingId}-overlaps`}
+          className="flex flex-col gap-1"
+        >
           {conflict.overlaps.map(({ sessions: [a, b], minutes }) => (
             <li key={`${a.id}-${b.id}`} className="flex justify-between gap-4">
               <span>
