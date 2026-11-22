@@ -8,11 +8,20 @@ import {
   dayLayout,
   type LanePlacement,
 } from "@/schedule/day-layout"
-import { MINUTES_PER_DAY, sessionEnd } from "@/schedule/schedule"
+import {
+  conflictsInvolving,
+  MINUTES_PER_DAY,
+  sessionEnd,
+} from "@/schedule/schedule"
 import { formatTime, formatTimeRange } from "@/schedule/time"
+import { ConflictFocusBar } from "./conflict-focus-bar"
 import { EmptySchedule } from "./empty-schedule"
 import { useSchedule } from "./schedule-provider"
-import type { SessionEditing } from "./scheduler-page"
+import {
+  type ConflictFocus,
+  conflictParam,
+  type SessionEditing,
+} from "./scheduler-page"
 
 /** One pixel per minute: an hour row is 60px tall. */
 const PX_PER_MINUTE = 1
@@ -26,14 +35,26 @@ const SCROLL_LEAD_MINUTES = 30
 /** Blocks at least this tall put the time range under the title. */
 const STACKED_BLOCK_MINUTES = 45
 
-export function DayView({ onAddSession, onEditSession }: SessionEditing) {
+export function DayView({
+  onAddSession,
+  onEditSession,
+  focus,
+}: SessionEditing & ConflictFocus) {
   const { schedule } = useSchedule()
   const layout = dayLayout(schedule)
+  const focused = focus && conflictsInvolving(schedule, focus)
+  const highlighted = new Set(
+    focused?.flatMap((conflict) => conflict.sessions.map((s) => s.id))
+  )
 
-  // Open the grid just above the first session rather than at midnight.
+  // Open the grid just above the highlighted conflict, or else the first
+  // session, rather than at midnight.
   const scroller = useRef<HTMLDivElement>(null)
   const hasScrolled = useRef(false)
-  const firstMinute = layout.blocks[0]?.top ?? DEFAULT_FIRST_MINUTE
+  const firstMinute =
+    focused?.[0]?.sessions[0].start ??
+    layout.blocks[0]?.top ??
+    DEFAULT_FIRST_MINUTE
   useEffect(() => {
     if (hasScrolled.current || !scroller.current) return
     scroller.current.scrollTop = toPx(
@@ -43,10 +64,18 @@ export function DayView({ onAddSession, onEditSession }: SessionEditing) {
   }, [firstMinute])
 
   return (
-    <section aria-labelledby="day-heading">
+    <section aria-labelledby="day-heading" className="flex flex-col gap-3">
       <h2 id="day-heading" className="sr-only">
         Day
       </h2>
+      {focused && (
+        <ConflictFocusBar
+          view="day"
+          conflicts={focused}
+          verb="Highlighting"
+          clearLabel="Clear highlight"
+        />
+      )}
       {schedule.length === 0 ? (
         <EmptySchedule onAddSession={onAddSession} />
       ) : (
@@ -105,12 +134,19 @@ export function DayView({ onAddSession, onEditSession }: SessionEditing) {
                     <SessionBlock
                       key={block.session.id}
                       block={block}
+                      highlighted={highlighted.has(block.session.id)}
                       onEdit={onEditSession}
                     />
                   ))}
                 </ol>
                 {layout.overflows.map((overflow) => (
-                  <OverflowLink key={overflow.top} overflow={overflow} />
+                  <OverflowLink
+                    key={overflow.top}
+                    overflow={overflow}
+                    highlighted={overflow.sessions.some((s) =>
+                      highlighted.has(s.id)
+                    )}
+                  />
                 ))}
               </div>
             </div>
@@ -121,15 +157,28 @@ export function DayView({ onAddSession, onEditSession }: SessionEditing) {
   )
 }
 
-/** The sessions folded past the last lane, opened in the Agenda. */
-function OverflowLink({ overflow }: { overflow: DayOverflow }) {
+/** Marks a block, or "+N", that belongs to the highlighted conflict. */
+const HIGHLIGHT_RING = "ring-2 ring-primary ring-offset-1 ring-offset-card"
+
+/** The sessions folded past the last lane, opened in the Agenda filtered to
+ * their conflict. */
+function OverflowLink({
+  overflow,
+  highlighted,
+}: {
+  overflow: DayOverflow
+  highlighted: boolean
+}) {
   const count = overflow.sessions.length
   return (
     <Link
       to="/"
-      search={{ view: "agenda" }}
+      search={{ view: "agenda", conflict: conflictParam(overflow.sessions) }}
       title={overflow.sessions.map((s) => s.title).join(", ")}
-      className="absolute flex items-start justify-center rounded-md border border-destructive/70 bg-destructive/10 pt-1 text-xs font-medium text-destructive outline-none hover:bg-destructive/20 focus-visible:ring-3 focus-visible:ring-destructive/40"
+      className={cn(
+        "absolute flex items-start justify-center rounded-md border border-destructive/70 bg-destructive/10 pt-1 text-xs font-medium text-destructive outline-none hover:bg-destructive/20 focus-visible:ring-3 focus-visible:ring-destructive/40",
+        highlighted && HIGHLIGHT_RING
+      )}
       style={laneStyle(overflow)}
     >
       +{count}{" "}
@@ -152,9 +201,11 @@ function laneStyle({ top, bottom, lane, lanes }: LanePlacement) {
 
 function SessionBlock({
   block,
+  highlighted,
   onEdit,
 }: {
   block: DayBlock
+  highlighted: boolean
   onEdit: SessionEditing["onEditSession"]
 }) {
   const { session, inConflict } = block
@@ -168,7 +219,8 @@ function SessionBlock({
         block.continuesTomorrow && "rounded-b-none border-b-2 border-dashed",
         inConflict
           ? "border-destructive/70 bg-destructive/10 text-destructive"
-          : "border-session-border bg-session text-session-foreground"
+          : "border-session-border bg-session text-session-foreground",
+        highlighted && cn(HIGHLIGHT_RING, "z-10")
       )}
       style={laneStyle(block)}
     >
@@ -204,6 +256,7 @@ function SessionBlock({
                 <span className="sr-only">In conflict</span>
               </>
             )}
+            {highlighted && <span className="sr-only">Highlighted</span>}
             <span className="truncate">{session.title}</span>
           </span>
           <span className="truncate tabular-nums opacity-85">{timeRange}</span>

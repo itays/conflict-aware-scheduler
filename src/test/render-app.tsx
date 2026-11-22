@@ -20,11 +20,11 @@ export async function renderApp(url = "/", initialSchedule?: Schedule) {
     path: "/",
     validateSearch: viewSearchSchema,
     component: function Index() {
-      const { view } = indexRoute.useSearch()
+      const { view, conflict } = indexRoute.useSearch()
       return (
         <ThemeProvider defaultTheme="light">
           <ScheduleProvider initialSchedule={initialSchedule}>
-            <SchedulerPage view={view} />
+            <SchedulerPage view={view} conflict={conflict} />
           </ScheduleProvider>
         </ThemeProvider>
       )
