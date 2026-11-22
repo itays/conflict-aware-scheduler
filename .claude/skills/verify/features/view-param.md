@@ -1,6 +1,6 @@
 # View parameter
 
-The `view` search parameter picks the view, so a reload or a shared link opens the same one. `day` is the default and shows the time grid, and `agenda` shows the Agenda. Any other value falls back to `day`. The `View` switch in the header changes the parameter, by mouse or keyboard. A second, optional parameter, `conflict`, holds comma-joined session ids: the Agenda shows only their conflict and the Day view highlights it.
+The `view` search parameter picks the view, so a reload or a shared link opens the same one. `day` is the default and shows the time grid, and `agenda` shows the Agenda. Any other value falls back to `day`. The `View` switch in the header changes the parameter, by mouse or keyboard. A second, optional parameter, `conflict`, holds comma-joined session ids: the Agenda shows only the conflicts holding any of them, and the Day view highlights those conflicts.
 
 ## Sub-features
 
@@ -8,7 +8,7 @@ The `view` search parameter picks the view, so a reload or a shared link opens t
 - `view-agenda`: `/?view=agenda` opens the Agenda, and a reload keeps it.
 - `view-unknown`: an unknown value such as `?view=bogus` opens the Day view without page errors.
 - `view-switch`: the header's `View` switch holds links `Day` and `Agenda`. Clicking one, or pressing Enter on it, sets `?view=` to match, and the current one has `aria-current="page"`.
-- `view-conflict`: `conflict` is set by a card's `Show in Day view` and by `+N`, and cleared by `Show all`, `Clear highlight`, the summary link and the `View` switch, which sends only `view`. A value that matches no conflict shows `This conflict is resolved.` without page errors.
+- `view-conflict`: `conflict` is set by a card's `Show in Day view` and by `+N`, and cleared by `Show all`, `Clear highlight`, the summary link and the `View` switch, which sends only `view`. A value that matches no conflict, including an empty `conflict=`, shows `This conflict is resolved.` without page errors.
 - `view-keeps-edits`: switching views keeps sessions added or changed in the dialog. Only a reload goes back to the sample day.
 
 ## How to get to it (user POV)

@@ -3,7 +3,8 @@
 // gutter markers before the drop, the drop's summary, Esc (including the
 // release after it), 15-minute steps from an off-step start, both clamps
 // with auto-scroll, a dragged session never folding into "+N", a plain click
-// still opening the editor, and touch (hold to drag, swipe to scroll, tap).
+// still opening the editor, keyboard dragging with its announcements, and
+// touch (hold to drag, swipe to scroll, tap).
 //
 //   node drag.mjs <base-url> <artifact-dir>
 //
@@ -72,6 +73,18 @@ const markersOf = (schedule) =>
 const moved = (schedule, title, start) =>
   schedule.map((s) => (s.title === title ? { ...s, start } : s))
 const nameOf = (s) => `${s.title}, ${hhmm(s.start)} – ${hhmm(end(s))}`
+/** Where `steps` arrow presses land, held to 00:00–23:55. */
+const keyed = (s, steps) => Math.min(Math.max(s.start + 15 * steps, 0), 1435)
+/** The drop announcement for `title` after moving to `start`. */
+function dropText(schedule, title, start, from) {
+  const self = { ...schedule.find((s) => s.title === title), start }
+  const n = schedule.filter(
+    (s) => s.title !== title && shared(s, self) > 0
+  ).length
+  const overlaps = n === 0 ? "no overlaps" : `overlaps ${plural(n, "session")}`
+  const verb = start === from ? "stays at" : "moved to"
+  return `${title} ${verb} ${hhmm(start)}, ${overlaps}`
+}
 
 const sample = sampleDay()
 const byTitle = (title) => sample.find((s) => s.title === title)
@@ -99,6 +112,7 @@ const handles = (p) => {
     block: (title) =>
       day.getByRole("listitem", { name: new RegExp(`^${title},`) }),
     label: p.locator("[data-drag-label]"),
+    announcer: p.locator("[data-drag-announcer]"),
     status: () => p.getByRole("status").textContent(),
     markers: () =>
       day
@@ -108,7 +122,9 @@ const handles = (p) => {
     scroller: day.locator("div.overflow-y-auto"),
   }
 }
-const { day, block, label, status, markers, scroller } = handles(page)
+const { day, block, label, announcer, status, markers, scroller } =
+  handles(page)
+const said = () => announcer.textContent()
 const load = async () => {
   await page.goto(`${baseUrl}/?view=day`)
   await page.waitForLoadState("networkidle")
@@ -179,8 +195,19 @@ try {
     (await status()) === summaryOf(sample),
     await status()
   )
+  check(
+    "a pointer drag announces the pick-up, not each step",
+    (await said()) === `Picked up ${standup.title} at ${hhmm(standup.start)}`,
+    await said()
+  )
   await shot(page, "mid-drag")
   await page.mouse.up()
+  check(
+    "the drop is announced with its overlaps",
+    (await said()) ===
+      dropText(sample, standup.title, standup.start + 30, standup.start),
+    await said()
+  )
   check(
     "drop commits the overlap",
     (await status()) === summaryOf(standupAt0900),
@@ -255,7 +282,25 @@ try {
   await load()
   const wrapUp = byTitle("Panel wrap-up")
   ;[x] = await press(wrapUp.title, 10)
-  check("stops at 23:55", (await holdAtEdge(x, "bottom")) === "23:55")
+  // The pointer, at the edge, holds the block by its middle, so its start
+  // sits above the grid's end. Pulling below the grid reaches the clamp.
+  await holdAtEdge(x, "bottom")
+  check(
+    "holding at the bottom edge scrolls the grid to its end",
+    await scroller.evaluate(
+      (e) => e.scrollTop >= e.scrollHeight - e.clientHeight - 1
+    )
+  )
+  const grid = await scroller.boundingBox()
+  for (const below of [20, 60]) {
+    await page.mouse.move(x, grid.y + grid.height + below, { steps: 3 })
+    await page.waitForTimeout(150)
+  }
+  check(
+    "pulling below the grid stops at 23:55",
+    (await label.textContent()) === "23:55",
+    await label.textContent()
+  )
   await shot(page, "clamp-bottom")
   await page.mouse.up()
   const wrapUpLate = moved(sample, wrapUp.title, 1435)
@@ -299,6 +344,135 @@ try {
     "click opens the editor",
     await page.getByRole("dialog", { name: "Edit session" }).isVisible()
   )
+
+  step = "keyboard pick up, move and drop"
+  await load()
+  const hiring = byTitle("Hiring sync")
+  const hiringButton = block(hiring.title).getByRole("button")
+  await hiringButton.focus()
+  check(
+    "the block's button describes the keys",
+    (await hiringButton.evaluate(
+      (b) =>
+        document.getElementById(b.getAttribute("aria-describedby"))?.textContent
+    )) ===
+      "Press Space to pick up, the up and down arrows to move 15 minutes, Space to drop and Escape to cancel."
+  )
+  check(
+    "the focused block shows an outline",
+    (await block(hiring.title).evaluate(
+      (li) => getComputedStyle(li).outlineStyle
+    )) !== "none"
+  )
+  await page.keyboard.press("Space")
+  check(
+    "Space picks the session up",
+    (await said()) === `Picked up ${hiring.title} at ${hhmm(hiring.start)}`,
+    await said()
+  )
+  await page.keyboard.press("ArrowDown")
+  await page.keyboard.press("ArrowDown")
+  const hiringAt = keyed(hiring, 2)
+  check(
+    "two arrow presses move 30 minutes",
+    (await label.textContent()) === hhmm(hiringAt) &&
+      (await said()) === `${hiring.title} at ${hhmm(hiringAt)}`,
+    [await label.textContent(), await said()]
+  )
+  check(
+    "the summary waits for the keyboard drop",
+    (await status()) === summaryOf(sample),
+    await status()
+  )
+  await shot(page, "keyboard-mid")
+  await page.keyboard.press("Space")
+  const hiringMoved = moved(sample, hiring.title, hiringAt)
+  check(
+    "Space drops it and says how many sessions it overlaps",
+    (await said()) === dropText(sample, hiring.title, hiringAt, hiring.start),
+    await said()
+  )
+  check(
+    "the keyboard drop saves the new start",
+    (await block(hiring.title).getAttribute("title")) ===
+      nameOf({ ...hiring, start: hiringAt }) &&
+      (await status()) === summaryOf(hiringMoved),
+    await status()
+  )
+  check(
+    "the keyboard drop opens no dialog and keeps focus",
+    (await page.getByRole("dialog").count()) === 0 &&
+      (await hiringButton.evaluate((b) => b === document.activeElement))
+  )
+
+  step = "keyboard cancel"
+  await page.keyboard.press("Space")
+  await page.keyboard.press("ArrowUp")
+  await page.keyboard.press("Escape")
+  check(
+    "Esc cancels and says where the session stays",
+    (await said()) ===
+      `Move cancelled. ${hiring.title} stays at ${hhmm(hiringAt)}` &&
+      (await block(hiring.title).getAttribute("title")) ===
+        nameOf({ ...hiring, start: hiringAt }),
+    await said()
+  )
+  await page.keyboard.press("Space")
+  await page.keyboard.press("ArrowDown")
+  await page.keyboard.press("Tab")
+  check(
+    "Tab cancels too",
+    (await said()) ===
+      `Move cancelled. ${hiring.title} stays at ${hhmm(hiringAt)}` &&
+      (await label.count()) === 0,
+    await said()
+  )
+  await hiringButton.focus()
+  await page.keyboard.press("Enter")
+  check(
+    "Enter still opens the editor",
+    await page.getByRole("dialog", { name: "Edit session" }).isVisible()
+  )
+
+  step = "keyboard clamps while the grid scrolls"
+  await load()
+  await block(wrapUp.title).getByRole("button").focus()
+  await page.keyboard.press("Space")
+  for (let i = 0; i < 30; i++) await page.keyboard.press("ArrowDown")
+  check(
+    "arrows stop at 23:55 and say so",
+    (await label.textContent()) === "23:55" &&
+      (await said()) === `${wrapUp.title} at 23:55, the latest start`,
+    [await label.textContent(), await said()]
+  )
+  await shot(page, "keyboard-clamp")
+  // Presses past the clamp are not counted, so one press back moves at
+  // once, to the last whole step before it.
+  const backFromEnd = keyed(wrapUp, Math.ceil((1435 - wrapUp.start) / 15) - 1)
+  await page.keyboard.press("ArrowUp")
+  check(
+    "the first press back moves one step",
+    (await label.textContent()) === hhmm(backFromEnd),
+    await label.textContent()
+  )
+  await page.keyboard.press("Space")
+  check(
+    "the late keyboard drop lands there",
+    (await block(wrapUp.title).getAttribute("title")) ===
+      nameOf({ ...wrapUp, start: backFromEnd }) &&
+      (await said()) ===
+        dropText(sample, wrapUp.title, backFromEnd, wrapUp.start),
+    await said()
+  )
+  await block(standup.title).getByRole("button").focus()
+  await page.keyboard.press("Space")
+  for (let i = 0; i < 40; i++) await page.keyboard.press("ArrowUp")
+  check(
+    "arrows stop at 00:00 and say so",
+    (await said()) === `${standup.title} at 00:00, the earliest start`,
+    await said()
+  )
+  await page.keyboard.press("Escape")
 } catch (error) {
   check(`step "${step}" ran`, false, String(error))
   await page.screenshot({ path: join(outDir, "failure.png") })
