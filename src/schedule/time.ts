@@ -9,6 +9,10 @@ export function formatTime(minutes: number): string {
   return `${pad(Math.floor(ofDay / 60))}:${pad(ofDay % 60)}`
 }
 
+export function formatTimeRange(start: number, end: number): string {
+  return `${formatTime(start)} – ${formatTime(end)}`
+}
+
 export function formatDuration(minutes: number): string {
   if (minutes < 120) return `${minutes} min`
   const hours = Math.floor(minutes / 60)

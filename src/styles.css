@@ -142,7 +142,7 @@
   }
 }
 
-/* Diagonal stripes marking the minutes a session shares with another. */
+/* Diagonal stripes marking the minutes a session overlaps another. */
 @utility bg-hatch {
   background-image: repeating-linear-gradient(
     -45deg,

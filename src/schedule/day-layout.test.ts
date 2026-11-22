@@ -24,7 +24,7 @@ describe("dayLayout", () => {
           bottom: toMinutes("09:00"),
           continuesTomorrow: false,
           inConflict: false,
-          sharedRanges: [],
+          overlapRanges: [],
         },
       ],
       overflows: [],
@@ -56,11 +56,11 @@ describe("dayLayout", () => {
       session("Room hold", "10:45", 45),
     ])
     expect(
-      layout.blocks.map(({ session, lane, lanes, sharedRanges }) => ({
+      layout.blocks.map(({ session, lane, lanes, overlapRanges }) => ({
         title: session.title,
         lane,
         lanes,
-        shared: sharedRanges.map(({ start, end }) => [start, end]),
+        shared: overlapRanges.map(({ start, end }) => [start, end]),
       }))
     ).toEqual([
       {
@@ -90,7 +90,7 @@ describe("dayLayout", () => {
       session("Call", "09:30", 30),
       session("Review", "11:00", 30),
     ])
-    expect(layout.blocks[0].sharedRanges).toEqual([
+    expect(layout.blocks[0].overlapRanges).toEqual([
       { start: toMinutes("09:30"), end: toMinutes("10:00") },
       { start: toMinutes("11:00"), end: toMinutes("11:30") },
     ])
@@ -160,6 +160,36 @@ describe("dayLayout", () => {
     ])
   })
 
+  it("gives each separate crowded stretch its own overflow", () => {
+    const layout = dayLayout([
+      session("All day", "08:00", 600),
+      session("A", "09:00", 30),
+      session("B", "09:00", 30),
+      session("Folded early", "09:00", 30),
+      session("C", "16:00", 30),
+      session("D", "16:00", 30),
+      session("Folded late", "16:00", 30),
+    ])
+    expect(
+      layout.overflows.map(({ sessions, top, bottom }) => ({
+        titles: sessions.map((s) => s.title),
+        top,
+        bottom,
+      }))
+    ).toEqual([
+      {
+        titles: ["Folded early"],
+        top: toMinutes("09:00"),
+        bottom: toMinutes("09:30"),
+      },
+      {
+        titles: ["Folded late"],
+        top: toMinutes("16:00"),
+        bottom: toMinutes("16:30"),
+      },
+    ])
+  })
+
   it("still hatches the minutes visible sessions share with folded ones", () => {
     const layout = dayLayout([
       session("A", "08:45", 120),
@@ -168,7 +198,7 @@ describe("dayLayout", () => {
       session("Folded", "09:15", 30),
     ])
     expect(layout.overflows[0].sessions.map((s) => s.title)).toEqual(["Folded"])
-    expect(layout.blocks[0].sharedRanges).toEqual([
+    expect(layout.blocks[0].overlapRanges).toEqual([
       { start: toMinutes("09:00"), end: toMinutes("09:45") },
     ])
   })
@@ -179,15 +209,15 @@ describe("dayLayout", () => {
       session("Phone screen", "09:00", 60),
     ])
     expect(
-      layout.blocks.map(({ lane, lanes, inConflict, sharedRanges }) => ({
+      layout.blocks.map(({ lane, lanes, inConflict, overlapRanges }) => ({
         lane,
         lanes,
         inConflict,
-        sharedRanges,
+        overlapRanges,
       }))
     ).toEqual([
-      { lane: 0, lanes: 1, inConflict: false, sharedRanges: [] },
-      { lane: 0, lanes: 1, inConflict: false, sharedRanges: [] },
+      { lane: 0, lanes: 1, inConflict: false, overlapRanges: [] },
+      { lane: 0, lanes: 1, inConflict: false, overlapRanges: [] },
     ])
     expect(layout.conflictMarkers).toEqual([])
   })

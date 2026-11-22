@@ -11,7 +11,7 @@ import {
   sessionEnd,
   sortByStart,
 } from "@/schedule/schedule"
-import { formatDuration, formatTime } from "@/schedule/time"
+import { formatDuration, formatTimeRange } from "@/schedule/time"
 import { useSchedule } from "./schedule-provider"
 
 type AgendaItem =
@@ -95,11 +95,7 @@ function BackToBackNote() {
 }
 
 function TimeRange({ start, end }: { start: number; end: number }) {
-  return (
-    <span className="tabular-nums">
-      {formatTime(start)} – {formatTime(end)}
-    </span>
-  )
+  return <span className="tabular-nums">{formatTimeRange(start, end)}</span>
 }
 
 function SessionRow({

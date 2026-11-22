@@ -9,29 +9,27 @@ import {
 
 export type TimeRange = { start: number; end: number }
 
-/** Where a session sits on the Day view's grid, in minutes of the day. */
-export type DayBlock = {
-  session: Session
-  /** Column of its group of overlapping sessions, counted from 0. */
+/** Where an item sits on the Day view's grid, in minutes of the day. */
+export type LanePlacement = {
+  /** Column within its group of overlapping sessions, counted from 0. */
   lane: number
   /** Columns its group splits the width into. */
   lanes: number
   top: number
-  /** The session's end, held at the bottom of the grid. */
+  /** Held at the bottom of the grid for anything running past midnight. */
   bottom: number
-  continuesTomorrow: boolean
-  inConflict: boolean
-  /** Minutes this session shares with any other, merged and in order. */
-  sharedRanges: TimeRange[]
 }
 
-export type DayOverflow = {
-  sessions: Session[]
-  lane: number
-  lanes: number
-  top: number
-  bottom: number
+export type DayBlock = LanePlacement & {
+  session: Session
+  continuesTomorrow: boolean
+  inConflict: boolean
+  /** Minutes this session overlaps any other, merged and in order. */
+  overlapRanges: TimeRange[]
 }
+
+/** Overlapping sessions folded past the last lane, shown as "+N". */
+export type DayOverflow = LanePlacement & { sessions: Session[] }
 
 export type DayLayout = {
   blocks: DayBlock[]
@@ -40,42 +38,44 @@ export type DayLayout = {
 }
 
 /** Lanes shown side by side before the rest fold into one overflow column. */
-export const MAX_LANES = 3
+const MAX_LANES = 3
 
 export function dayLayout(schedule: Schedule): DayLayout {
   const blocks: DayBlock[] = []
   const overflows: DayOverflow[] = []
 
   for (const group of groupByOverlap(schedule)) {
-    const lanes = assignLanes(group)
-    const needed = Math.max(...lanes) + 1
+    const laneOf = assignLanes(group)
+    const needed = Math.max(...laneOf) + 1
     const columns = needed > MAX_LANES ? MAX_LANES + 1 : needed
     const hidden: Session[] = []
 
     group.forEach((session, index) => {
-      if (lanes[index] >= MAX_LANES) {
+      if (laneOf[index] >= MAX_LANES) {
         hidden.push(session)
         return
       }
       blocks.push({
         session,
-        lane: lanes[index],
+        lane: laneOf[index],
         lanes: columns,
         top: session.start,
         bottom: clampToDay(sessionEnd(session)),
         continuesTomorrow: sessionEnd(session) > MINUTES_PER_DAY,
         inConflict: group.length > 1,
-        sharedRanges: sharedRanges(session, group),
+        overlapRanges: overlapRanges(session, group),
       })
     })
 
-    if (hidden.length > 0) {
+    // A long session can link crowded stretches hours apart; each stretch
+    // gets its own "+N" so none spans minutes where nothing is folded.
+    for (const folded of groupByOverlap(hidden)) {
       overflows.push({
-        sessions: hidden,
+        sessions: folded,
         lane: MAX_LANES,
         lanes: columns,
-        top: Math.min(...hidden.map((s) => s.start)),
-        bottom: clampToDay(Math.max(...hidden.map(sessionEnd))),
+        top: folded[0].start,
+        bottom: clampToDay(Math.max(...folded.map(sessionEnd))),
       })
     }
   }
@@ -92,7 +92,7 @@ export function dayLayout(schedule: Schedule): DayLayout {
 
 const clampToDay = (minute: number) => Math.min(minute, MINUTES_PER_DAY)
 
-function sharedRanges(session: Session, group: Session[]): TimeRange[] {
+function overlapRanges(session: Session, group: Session[]): TimeRange[] {
   const ranges = group
     .filter((other) => other !== session)
     .map((other) => ({

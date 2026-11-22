@@ -6,9 +6,10 @@ import {
   type DayBlock,
   type DayOverflow,
   dayLayout,
+  type LanePlacement,
 } from "@/schedule/day-layout"
 import { MINUTES_PER_DAY, sessionEnd } from "@/schedule/schedule"
-import { formatTime } from "@/schedule/time"
+import { formatTime, formatTimeRange } from "@/schedule/time"
 import { useSchedule } from "./schedule-provider"
 
 /** One pixel per minute: an hour row is 60px tall. */
@@ -18,6 +19,10 @@ const px = (minutes: number) => `${toPx(minutes)}px`
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour)
 /** Where the grid opens on a day with no sessions. */
 const DEFAULT_FIRST_MINUTE = 8 * 60
+/** Room left above the first session when the grid opens. */
+const SCROLL_LEAD_MINUTES = 30
+/** Blocks at least this tall put the time range under the title. */
+const STACKED_BLOCK_MINUTES = 45
 
 export function DayView() {
   const { schedule } = useSchedule()
@@ -29,7 +34,9 @@ export function DayView() {
   const firstMinute = layout.blocks[0]?.top ?? DEFAULT_FIRST_MINUTE
   useEffect(() => {
     if (hasScrolled.current || !scroller.current) return
-    scroller.current.scrollTop = toPx(Math.max(0, firstMinute - 30))
+    scroller.current.scrollTop = toPx(
+      Math.max(0, firstMinute - SCROLL_LEAD_MINUTES)
+    )
     hasScrolled.current = true
   }, [firstMinute])
 
@@ -60,7 +67,7 @@ export function DayView() {
               className="absolute inset-y-0 right-0 w-1"
             >
               {layout.conflictMarkers.map(({ start, end }) => {
-                const label = `Conflict ${formatTime(start)} – ${formatTime(end)}`
+                const label = `Conflict ${formatTimeRange(start, end)}`
                 return (
                   <li
                     key={start}
@@ -121,17 +128,7 @@ function OverflowLink({ overflow }: { overflow: DayOverflow }) {
 }
 
 /** Places an item in its lane, leaving a hairline between neighbours. */
-function laneStyle({
-  top,
-  bottom,
-  lane,
-  lanes,
-}: {
-  top: number
-  bottom: number
-  lane: number
-  lanes: number
-}) {
+function laneStyle({ top, bottom, lane, lanes }: LanePlacement) {
   return {
     top: px(top),
     height: `calc(${px(bottom - top)} - 1px)`,
@@ -142,8 +139,11 @@ function laneStyle({
 
 function SessionBlock({ block }: { block: DayBlock }) {
   const { session, inConflict } = block
+  const timeRange = formatTimeRange(session.start, sessionEnd(session))
   return (
     <li
+      // Short sessions are too small for their text; the tooltip keeps it.
+      title={`${session.title}, ${timeRange}`}
       className={cn(
         "absolute overflow-hidden rounded-md border text-xs",
         block.continuesTomorrow && "rounded-b-none border-b-2 border-dashed",
@@ -153,7 +153,7 @@ function SessionBlock({ block }: { block: DayBlock }) {
       )}
       style={laneStyle(block)}
     >
-      {block.sharedRanges.map((range) => (
+      {block.overlapRanges.map((range) => (
         <span
           key={range.start}
           aria-hidden
@@ -167,7 +167,7 @@ function SessionBlock({ block }: { block: DayBlock }) {
       <div
         className={cn(
           "relative flex gap-x-2 px-2 py-1 leading-tight",
-          block.bottom - block.top >= 45
+          block.bottom - block.top >= STACKED_BLOCK_MINUTES
             ? "flex-col"
             : "flex-wrap items-baseline"
         )}
@@ -181,9 +181,7 @@ function SessionBlock({ block }: { block: DayBlock }) {
           )}
           <span className="truncate">{session.title}</span>
         </span>
-        <span className="truncate tabular-nums opacity-85">
-          {formatTime(session.start)} – {formatTime(sessionEnd(session))}
-        </span>
+        <span className="truncate tabular-nums opacity-85">{timeRange}</span>
         {block.continuesTomorrow && (
           <span className="flex items-center gap-1 font-medium">
             <ArrowDownIcon aria-hidden className="size-3" />
