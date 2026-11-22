@@ -1,11 +1,11 @@
 ---
 name: verify
-description: Drive the Conflict-Aware Scheduler web app (TanStack Start, single page at `/`) in a real Chromium browser and capture proof of what a user sees. Use to confirm a UI change works in the running app, to prove the header conflict summary and Agenda conflict cards match the sample day, or whenever a change touches the schedule module, the Agenda, the header or routing and unit tests alone are not proof.
+description: Drive the Conflict-Aware Scheduler web app (TanStack Start, single page at `/`) in a real Chromium browser and capture proof of what a user sees. Use to confirm a UI change works in the running app, to prove the header conflict summary, the Day view's conflict marks and the Agenda conflict cards match the sample day, or whenever a change touches the schedule module, the Day view, the Agenda, the header or routing and unit tests alone are not proof.
 ---
 
 # Verify the Conflict-Aware Scheduler
 
-The app is one web page. Users touch the header (title, conflict summary, theme toggle) and the main area, which shows the Day view (`?view=day`, the default) or the Agenda (`?view=agenda`). The schedule lives in memory and every page load starts from the sample day in `src/schedule/sample-day.ts`. Nothing persists, so there is no data directory and no seeding step.
+The app is one web page. Users touch the header (title, conflict summary, Day/Agenda switch, theme toggle) and the main area, which shows the Day view's time grid (`?view=day`, the default) or the Agenda (`?view=agenda`). The schedule lives in memory and every page load starts from the sample day in `src/schedule/sample-day.ts`. Nothing persists, so there is no data directory and no seeding step.
 
 The harness is Playwright's Chromium, driven by Node scripts in `scripts/`. Both are already installed by `bun install`. Every helper is run from the repo root.
 
@@ -41,7 +41,7 @@ Read-only. It checks three things: the server process is alive, the port is held
 
 ## Drive
 
-The flagship proof is the conflict summary against the sample day:
+The flagship proof is the conflict summary, the Day view's conflict marks and the Agenda's conflict cards against the sample day:
 
 ```sh
 node .claude/skills/verify/scripts/agenda-conflicts.mjs "$URL" "$ARTIFACTS/conflict-summary"
@@ -50,12 +50,13 @@ node .claude/skills/verify/scripts/agenda-conflicts.mjs "$URL" "$ARTIFACTS/confl
 It works out the expected conflicts from `sampleDay()` with its own brute-force check (every pair, union-find). It does not use the app's `findConflicts`, so the app cannot pass by agreeing with itself. It then drives the user path:
 
 1. Open `/` and read the header `status`.
-2. Click the link `Open the Agenda`.
-3. Wait for `?view=agenda` and the list named `Agenda`.
-4. Read the header `status` again.
-5. Read every region named `N sessions overlap HH:mm – HH:mm`, including its `Sessions` list and its `Overlaps` list.
+2. In the Day view, read the session blocks marked `In conflict` and the gutter's `Conflicts` markers.
+3. Click `Agenda` in the header's `View` switch.
+4. Wait for `?view=agenda` and the list named `Agenda`.
+5. Read the header `status` again.
+6. Read every region named `N sessions overlap HH:mm – HH:mm`, including its `Sessions` list and its `Overlaps` list.
 
-It exits 0 only if all of these match the oracle: both summaries, every card's name, sessions and per-pair shared minutes, every session outside a conflict sitting outside the cards, and no page errors.
+It exits 0 only if all of these match the oracle: both summaries, one Day block per session, exactly the conflicting sessions marked `In conflict`, one gutter marker per conflict with its time range, every card's name, sessions and per-pair shared minutes, every session outside a conflict sitting outside the cards, and no page errors. If a step fails (a missing element, a timeout), it still writes `report.json` with `failedStep` and `error`, plus `failure.png`, and exits 1.
 
 For any other page state, capture evidence with:
 
@@ -63,7 +64,7 @@ For any other page state, capture evidence with:
 node .claude/skills/verify/scripts/snap.mjs "$URL/?view=agenda" "$ARTIFACTS/<feature>" <name> [light|dark]
 ```
 
-It writes `<name>.png`, `<name>.aria.yaml` (the ARIA snapshot of the page) and `<name>.errors.json`. It exits 1 on any page error.
+It waits for the page to hydrate (`networkidle`), then writes `<name>.png`, `<name>.aria.yaml` (the ARIA snapshot of the page) and `<name>.errors.json`. It exits 1 on any page error. The full-page screenshot does not scroll the Day grid, which has its own scroll area: it shows the hours from just above the first session.
 
 **Hydration trap.** The page is rendered on the server, so it is visible before React hydrates. Clicks made before hydration are dropped without an error: a menu does not open, a button does nothing. Plain links still work, because the browser navigates. After every `goto`, call `await page.waitForLoadState("networkidle")` before clicking a button.
 
@@ -73,17 +74,21 @@ For a step-by-step interaction the scripts don't cover, write a short Node scrip
 | --------------------------------------------------- | ------------------------------------------------------------------------------------------- |
 | `getByRole("status")`                               | header conflict summary: `2 conflicts · 5 sessions`, or `No conflicts`                      |
 | `getByRole("button", { name: "Toggle theme" })`     | theme menu: `Light`, `Dark`, `System`                                                       |
-| `getByRole("list", { name: "Agenda" })`             | the Agenda; its direct children are free slots, sessions and conflict cards, in start order |
+| `getByRole("navigation", { name: "View" })`         | Day/Agenda switch: links `Day` and `Agenda`; the current one has `aria-current="page"`      |
+| `getByRole("region", { name: "Day" })`              | the Day view's time grid                                                                    |
+| `day.getByRole("list", { name: "Sessions" })`       | the grid's session blocks, each a `listitem` named `<title>, HH:mm – HH:mm`                 |
+| `getByRole("list", { name: "Conflicts" })`          | the gutter markers, one `Conflict HH:mm – HH:mm` item per conflict                          |
+| `getByRole("link", { name: /^\+\d+ more session/ })` | the `+N` control for sessions folded past three lanes; it opens the Agenda                  |
+| `getByRole("list", { name: "Agenda" })`             | the Agenda; each item is a free slot, a session or a conflict card, in start order          |
 | `getByRole("region", { name: /sessions overlap/ })` | one conflict card                                                                           |
 | `card.getByRole("list", { name: "Sessions" })`      | that card's sessions                                                                        |
 | `card.getByRole("list", { name: "Overlaps" })`      | that card's overlaps, one `A × B` / `N min` pair per item                                   |
-| `getByRole("link", { name: "Open the Agenda" })`    | Day placeholder → Agenda (until issue #3 adds the Day/Agenda switch)                        |
 
 ## Evidence
 
 Everything goes under `verify-artifacts/<RUN_ID>/<feature>/` at the repo root. Git ignores that directory, and cleanup never deletes it. A proof includes:
 
-- the action and the state after it, not only the final screen (`agenda-conflicts.mjs` keeps `day.png` from before the click and `agenda.png` / `agenda.aria.yaml` from after it);
+- the action and the state after it, not only the final screen (`agenda-conflicts.mjs` keeps `day.png` / `day.aria.yaml` from before the click and `agenda.png` / `agenda.aria.yaml` from after it);
 - `report.json`, holding the expected values, the observed values and any mismatches;
 - the page errors, which must be empty.
 

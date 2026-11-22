@@ -66,7 +66,11 @@ function overlapBetween(a: Session, b: Session): Overlap | undefined {
   return { sessions: [a, b], start, end, minutes: end - start }
 }
 
-export function findConflicts(schedule: Schedule): Conflict[] {
+/**
+ * Sessions in start order, split into groups linked by overlaps. A session
+ * that overlaps nothing is a group of one.
+ */
+export function groupByOverlap(schedule: Schedule): Session[][] {
   // Sorted by start, a run of sessions stays connected while each next one
   // starts before the run's latest end.
   const groups: Session[][] = []
@@ -79,8 +83,11 @@ export function findConflicts(schedule: Schedule): Conflict[] {
     }
     groupEnd = Math.max(groupEnd, sessionEnd(session))
   }
-
   return groups
+}
+
+export function findConflicts(schedule: Schedule): Conflict[] {
+  return groupByOverlap(schedule)
     .filter((sessions) => sessions.length > 1)
     .map((sessions) => {
       const overlaps = sessions.flatMap((a, i) =>

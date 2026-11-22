@@ -26,6 +26,9 @@ page.on("pageerror", (error) => errors.push(String(error)))
 
 await page.goto(url)
 await page.getByRole("status").waitFor()
+// Capture the hydrated page: effects such as the Day grid's opening scroll
+// only run after React takes over the server-rendered HTML.
+await page.waitForLoadState("networkidle")
 await page.screenshot({ path: join(outDir, `${name}.png`), fullPage: true })
 writeFileSync(
   join(outDir, `${name}.aria.yaml`),

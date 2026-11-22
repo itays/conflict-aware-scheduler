@@ -1,18 +1,18 @@
 # View parameter
 
-The `view` search parameter picks the view, so a reload or a shared link opens the same one. `day` is the default and `agenda` shows the Agenda. Any other value falls back to `day`. Until issue #3 builds the Day view, `day` shows a placeholder with a link to the Agenda.
+The `view` search parameter picks the view, so a reload or a shared link opens the same one. `day` is the default and shows the time grid, and `agenda` shows the Agenda. Any other value falls back to `day`. The `View` switch in the header changes the parameter, by mouse or keyboard.
 
 ## Sub-features
 
 - `view-default`: `/` opens the Day view and the URL becomes `/?view=day`.
 - `view-agenda`: `/?view=agenda` opens the Agenda, and a reload keeps it.
 - `view-unknown`: an unknown value such as `?view=bogus` opens the Day view without page errors.
-- `view-placeholder-link`: `Open the Agenda` in the Day placeholder switches to the Agenda.
+- `view-switch`: the header's `View` switch holds links `Day` and `Agenda`. Clicking one, or pressing Enter on it, sets `?view=` to match, and the current one has `aria-current="page"`.
 
 ## How to get to it (user POV)
 
 - Type or share a URL with `?view=day`, `?view=agenda`, or no `view`.
-- Click `Open the Agenda` in the Day placeholder.
+- Click `Day` or `Agenda` in the header, or Tab to one and press Enter.
 
 ## Driving it with Playwright
 
@@ -21,12 +21,39 @@ Preconditions:
 - Baseline preconditions from the README.
 
 - **Default.** Run `curl -sS -o /dev/null -w '%{http_code} %{redirect_url}\n' "$URL/"`. It prints `307 …/?view=day`.
-- **Day placeholder.** Run `node .claude/skills/verify/scripts/snap.mjs "$URL/" "$ARTIFACTS/view-param" day`. The file `day.aria.yaml` contains `The Day view is on its way.` and `link "Open the Agenda"`, with `/url: /?view=agenda`.
+- **Day view.** Run `node .claude/skills/verify/scripts/snap.mjs "$URL/" "$ARTIFACTS/view-param" day`. The file `day.aria.yaml` contains `region "Day"` and `navigation "View"`, whose links are `Day` (`/url: /?view=day`) and `Agenda` (`/url: /?view=agenda`).
 - **Agenda.** Run `node .claude/skills/verify/scripts/snap.mjs "$URL/?view=agenda" "$ARTIFACTS/view-param" agenda`. The file `agenda.aria.yaml` contains `list "Agenda"`.
-- **Unknown value.** Run `node .claude/skills/verify/scripts/snap.mjs "$URL/?view=bogus" "$ARTIFACTS/view-param" bogus-view`. It exits 0, and `bogus-view.aria.yaml` shows the Day placeholder.
-- **Placeholder link.** Run `agenda-conflicts.mjs` (see `conflict-summary.md`). It clicks the link and waits for `?view=agenda`. `day.png` and `agenda.png` record the step.
+- **Unknown value.** Run `node .claude/skills/verify/scripts/snap.mjs "$URL/?view=bogus" "$ARTIFACTS/view-param" bogus-view`. It exits 0, and `bogus-view.aria.yaml` contains `region "Day"`.
+- **Switch by mouse and keyboard.** Run:
+
+  ```sh
+  mkdir -p "$ARTIFACTS/view-param"
+  node --input-type=module -e '
+  import { chromium } from "@playwright/test"
+  const [url, out] = process.argv.slice(1)
+  const b = await chromium.launch(); const p = await b.newPage()
+  const errors = []; p.on("pageerror", (e) => errors.push(String(e)))
+  await p.goto(url + "/")
+  const nav = p.getByRole("navigation", { name: "View" })
+  console.log("day current:", await nav.getByRole("link", { name: "Day" }).getAttribute("aria-current"))
+  await nav.getByRole("link", { name: "Agenda" }).click()
+  await p.waitForURL(/view=agenda/); await p.getByRole("list", { name: "Agenda" }).waitFor()
+  await p.screenshot({ path: out + "/switch-agenda.png" })
+  console.log("after click:", new URL(p.url()).search)
+  await p.waitForLoadState("networkidle")
+  const day = nav.getByRole("link", { name: "Day" })
+  for (let i = 0; i < 20 && !(await day.evaluate((el) => el === document.activeElement)); i++) await p.keyboard.press("Tab")
+  await p.keyboard.press("Enter")
+  await p.waitForURL(/view=day/); await p.getByRole("region", { name: "Day" }).waitFor()
+  await p.screenshot({ path: out + "/switch-day-keyboard.png" })
+  console.log("after Enter:", new URL(p.url()).search, "errors:", JSON.stringify(errors))
+  await b.close()' "$URL" "$ARTIFACTS/view-param"
+  ```
+
+  It prints `day current: page`, `after click: ?view=agenda`, and `after Enter: ?view=day errors: []`.
+- **Flagship.** `agenda-conflicts.mjs` (see `conflict-summary.md`) also clicks `Agenda` in the switch and waits for `?view=agenda`.
 
 ## Gotchas
 
 - The server answers `/` with a 307 to `/?view=day`. `curl` without `-L` sees no page.
-- Issue #3 replaces the placeholder and its link with a Day/Agenda switch in the header. Rewrite `view-placeholder-link` and the click in `agenda-conflicts.mjs` when it lands.
+- The switch is two plain links, so a click works even before hydration. Keyboard focus moves through the page from the top, so the Tab loop above presses Tab until the `Day` link has focus rather than counting presses.

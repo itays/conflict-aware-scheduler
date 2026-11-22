@@ -5,7 +5,7 @@ The `Toggle theme` button in the header opens a menu of `Light`, `Dark` and `Sys
 ## Sub-features
 
 - `theme-menu`: the `Toggle theme` button opens a menu with three radio items.
-- `theme-dark`: choosing `Dark` puts the `dark` class on `<html>` and darkens the page.
+- `theme-dark`: choosing `Dark` puts the `dark` class on `<html>` and darkens the page, including the Day view's session blocks (`--session*` tokens) and the red conflict blocks and hatching (`--destructive`).
 - `theme-system`: `System` follows the browser's colour scheme.
 
 ## How to get to it (user POV)
@@ -37,7 +37,7 @@ Preconditions:
   await b.close()' "$URL/?view=agenda" "$ARTIFACTS/theme/dark.png"
   ```
 
-  It prints `html class: dark`, and `dark.png` shows the Agenda on a dark background.
+  It prints `html class: dark`, and `dark.png` shows the Agenda on a dark background. Pass `"$URL/?view=day"` instead to see the Day grid: the blue session blocks and the red, hatched conflict blocks stay readable on the dark card.
 - **System.** Run `node .claude/skills/verify/scripts/snap.mjs "$URL/?view=agenda" "$ARTIFACTS/theme" system-dark dark`. With no stored choice, `system-dark.png` is dark.
 
 ## Gotchas
