@@ -213,7 +213,7 @@ function SessionForm({
         }
       />
 
-      <DialogFooter className="items-center">
+      <DialogFooter className="sm:items-center">
         {session && (
           <Button
             type="button"
