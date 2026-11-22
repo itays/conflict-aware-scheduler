@@ -35,13 +35,26 @@ export type Conflict = {
 
 export type FreeSlot = { start: number; end: number }
 
-export type ScheduleAction = { type: "clear" } | { type: "loadSampleDay" }
+export type ScheduleAction =
+  | { type: "add"; session: Session }
+  | { type: "update"; session: Session }
+  | { type: "delete"; id: string }
+  | { type: "clear" }
+  | { type: "loadSampleDay" }
 
 export function scheduleReducer(
-  _schedule: Schedule,
+  schedule: Schedule,
   action: ScheduleAction
 ): Schedule {
   switch (action.type) {
+    case "add":
+      return [...schedule, action.session]
+    case "update":
+      return schedule.map((s) =>
+        s.id === action.session.id ? action.session : s
+      )
+    case "delete":
+      return schedule.filter((s) => s.id !== action.id)
     case "clear":
       return []
     case "loadSampleDay":
@@ -64,6 +77,21 @@ function overlapBetween(a: Session, b: Session): Overlap | undefined {
   const end = Math.min(sessionEnd(a), sessionEnd(b))
   if (start >= end) return undefined
   return { sessions: [a, b], start, end, minutes: end - start }
+}
+
+/**
+ * The sessions `candidate` would share minutes with, in start order, leaving
+ * out the session with its own id so an edit never overlaps itself.
+ */
+export function overlapsWith(
+  schedule: Schedule,
+  candidate: Session
+): { session: Session; minutes: number }[] {
+  return sortByStart(schedule).flatMap((session) => {
+    if (session.id === candidate.id) return []
+    const overlap = overlapBetween(candidate, session)
+    return overlap ? [{ session, minutes: overlap.minutes }] : []
+  })
 }
 
 /**

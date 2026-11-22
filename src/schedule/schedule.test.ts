@@ -3,6 +3,7 @@ import { sampleDay } from "./sample-day"
 import {
   findConflicts,
   findFreeSlots,
+  overlapsWith,
   type Schedule,
   type Session,
   scheduleReducer,
@@ -153,6 +154,39 @@ describe("scheduleReducer", () => {
     expect(scheduleReducer(cleared, { type: "loadSampleDay" })).toEqual(
       sampleDay()
     )
+  })
+
+  it("adds, updates and deletes a session", () => {
+    const standup = session("Standup", "09:00", 30)
+    const added = scheduleReducer([], { type: "add", session: standup })
+    expect(added).toEqual([standup])
+
+    const moved = { ...standup, start: toMinutes("10:00") }
+    const updated = scheduleReducer(added, { type: "update", session: moved })
+    expect(updated).toEqual([moved])
+
+    expect(
+      scheduleReducer(updated, { type: "delete", id: standup.id })
+    ).toEqual([])
+  })
+})
+
+describe("overlapsWith", () => {
+  it("lists the sessions a draft shares minutes with, and how many", () => {
+    const before = session("Before", "08:00", 60)
+    const during = session("During", "09:30", 60)
+    const after = session("After", "10:00", 30)
+    const draft = session("Draft", "09:00", 60)
+    expect(overlapsWith([before, during, after], draft)).toEqual([
+      { session: during, minutes: 30 },
+    ])
+  })
+
+  it("ignores the session being edited", () => {
+    const editing = session("Editing", "09:00", 60)
+    expect(
+      overlapsWith([editing], { ...editing, start: toMinutes("09:30") })
+    ).toEqual([])
   })
 })
 
