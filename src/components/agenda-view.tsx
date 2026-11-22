@@ -1,20 +1,40 @@
+import { Link } from "@tanstack/react-router"
 import { cn } from "cn"
-import { Link2Icon, TriangleAlertIcon } from "lucide-react"
+import {
+  CalendarClockIcon,
+  Link2Icon,
+  PencilIcon,
+  TriangleAlertIcon,
+} from "lucide-react"
+import { useId, useRef } from "react"
+import { flushSync } from "react-dom"
+import { Button } from "@/components/ui/button"
 import {
   type Conflict,
+  conflictsInvolving,
   type FreeSlot,
   findConflicts,
   findFreeSlots,
   MINUTES_PER_DAY,
+  nextFreeStart,
   type Schedule,
   type Session,
   sessionEnd,
   sortByStart,
 } from "@/schedule/schedule"
 import { formatDuration, formatTimeRange } from "@/schedule/time"
+import { ConflictFocusBar } from "./conflict-focus-bar"
 import { EmptySchedule } from "./empty-schedule"
 import { useSchedule } from "./schedule-provider"
-import type { SessionEditing } from "./scheduler-page"
+import {
+  type ConflictFocus,
+  conflictParam,
+  type SessionEditing,
+  sessionElement,
+} from "./scheduler-page"
+
+/** Moves a session to a start, then finds focus a home it can keep. */
+type MoveSession = (session: Session, start: number) => void
 
 type AgendaItem =
   | { kind: "session"; start: number; session: Session }
@@ -53,24 +73,58 @@ function agendaItems(schedule: Schedule): AgendaItem[] {
   return items.sort((a, b) => a.start - b.start)
 }
 
-export function AgendaView({ onAddSession, onEditSession }: SessionEditing) {
-  const { schedule } = useSchedule()
+export function AgendaView({
+  onAddSession,
+  onEditSession,
+  focus,
+}: SessionEditing & ConflictFocus) {
+  const { schedule, dispatch } = useSchedule()
+  const showAll = useRef<HTMLAnchorElement>(null)
+  const focused = focus && conflictsInvolving(schedule, focus)
+
+  // The button that moved the session is gone once it leaves its conflict,
+  // so focus follows the session to its new row, or falls back to "Show all"
+  // when the filter hides that row.
+  const moveSession: MoveSession = (session, start) => {
+    flushSync(() =>
+      dispatch({ type: "update", session: { ...session, start } })
+    )
+    ;(sessionElement(session.id) ?? showAll.current)?.focus()
+  }
+
+  const items: AgendaItem[] = focused
+    ? focused.map((conflict) => ({
+        kind: "conflict",
+        start: conflict.sessions[0].start,
+        conflict,
+      }))
+    : agendaItems(schedule)
 
   return (
     <section aria-labelledby="agenda-heading" className="flex flex-col gap-3">
       <h2 id="agenda-heading" className="sr-only">
         Agenda
       </h2>
+      {focused && (
+        <ConflictFocusBar
+          view="agenda"
+          clearRef={showAll}
+          conflicts={focused}
+          verb="Showing only"
+          clearLabel="Show all"
+        />
+      )}
       {schedule.length === 0 ? (
         <EmptySchedule onAddSession={onAddSession} />
       ) : (
         <ol aria-labelledby="agenda-heading" className="flex flex-col gap-2">
-          {agendaItems(schedule).map((item, index, items) => (
+          {items.map((item, index) => (
             <li key={`${item.kind}-${item.start}`}>
               {/* Two neighbours with no free slot between them can only be
                 back-to-back: had they shared a minute, they would be one
                 conflict. */}
               {index > 0 &&
+                !focused &&
                 item.kind !== "free" &&
                 items[index - 1].kind !== "free" && <BackToBackNote />}
               {item.kind === "session" && (
@@ -81,7 +135,11 @@ export function AgendaView({ onAddSession, onEditSession }: SessionEditing) {
                 />
               )}
               {item.kind === "conflict" && (
-                <ConflictCard conflict={item.conflict} onEdit={onEditSession} />
+                <ConflictCard
+                  conflict={item.conflict}
+                  onEdit={onEditSession}
+                  onMove={moveSession}
+                />
               )}
               {item.kind === "free" && <FreeSlotRow slot={item.slot} />}
             </li>
@@ -105,6 +163,38 @@ function TimeRange({ start, end }: { start: number; end: number }) {
   return <span className="tabular-nums">{formatTimeRange(start, end)}</span>
 }
 
+/** A session's time and title columns, shared by every Agenda row. */
+function SessionSummary({
+  session,
+  titleId,
+}: {
+  session: Session
+  titleId?: string
+}) {
+  const end = sessionEnd(session)
+  return (
+    <>
+      <span className="flex w-28 shrink-0 flex-col sm:w-32">
+        <span className="font-medium">
+          <TimeRange start={session.start} end={end} />
+        </span>
+        {end > MINUTES_PER_DAY && (
+          <span className="text-xs text-chart-3">ends next day</span>
+        )}
+      </span>
+      <span aria-hidden className="size-2 shrink-0 rounded-xs bg-chart-2" />
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span id={titleId} className="font-medium">
+          {session.title}
+        </span>
+        <span className="text-xs text-muted-foreground">
+          {formatDuration(session.duration)}
+        </span>
+      </span>
+    </>
+  )
+}
+
 function SessionRow({
   session,
   onEdit,
@@ -114,7 +204,6 @@ function SessionRow({
   onEdit: SessionEditing["onEditSession"]
   className?: string
 }) {
-  const end = sessionEnd(session)
   return (
     <button
       type="button"
@@ -125,21 +214,7 @@ function SessionRow({
         className
       )}
     >
-      <span className="flex w-28 shrink-0 flex-col sm:w-32">
-        <span className="font-medium">
-          <TimeRange start={session.start} end={end} />
-        </span>
-        {end > MINUTES_PER_DAY && (
-          <span className="text-xs text-chart-3">ends next day</span>
-        )}
-      </span>
-      <span aria-hidden className="size-2 shrink-0 rounded-xs bg-chart-2" />
-      <span className="flex min-w-0 flex-col">
-        <span className="font-medium">{session.title}</span>
-        <span className="text-xs text-muted-foreground">
-          {formatDuration(session.duration)}
-        </span>
-      </span>
+      <SessionSummary session={session} />
     </button>
   )
 }
@@ -147,28 +222,45 @@ function SessionRow({
 function ConflictCard({
   conflict,
   onEdit,
+  onMove,
 }: {
   conflict: Conflict
   onEdit: SessionEditing["onEditSession"]
+  onMove: MoveSession
 }) {
+  const { schedule } = useSchedule()
   const headingId = `conflict-${conflict.sessions[0].id}`
   return (
     <section
       aria-labelledby={headingId}
       className="overflow-hidden rounded-xl border border-destructive"
     >
-      <h3
-        id={headingId}
-        className="flex flex-wrap items-center gap-x-3 gap-y-1 bg-destructive/10 px-4 py-2.5 text-sm font-medium text-destructive"
-      >
-        <TriangleAlertIcon aria-hidden className="size-4" />
-        <span>{conflict.sessions.length} sessions overlap</span>{" "}
-        <TimeRange start={conflict.start} end={conflict.end} />
-      </h3>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 bg-destructive/10 px-4 py-2.5">
+        <h3
+          id={headingId}
+          className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-medium text-destructive"
+        >
+          <TriangleAlertIcon aria-hidden className="size-4" />
+          <span>{conflict.sessions.length} sessions overlap</span>{" "}
+          <TimeRange start={conflict.start} end={conflict.end} />
+        </h3>
+        <Link
+          to="/"
+          search={{ view: "day", conflict: conflictParam(conflict.sessions) }}
+          className="rounded-md text-sm font-medium text-destructive underline-offset-4 outline-none hover:underline focus-visible:ring-3 focus-visible:ring-destructive/40"
+        >
+          Show in Day view
+        </Link>
+      </div>
       <ul aria-label="Sessions" className="divide-y">
         {conflict.sessions.map((session) => (
           <li key={session.id}>
-            <SessionRow session={session} onEdit={onEdit} />
+            <ConflictSessionRow
+              session={session}
+              freeStart={nextFreeStart(schedule, session)}
+              onEdit={onEdit}
+              onMove={onMove}
+            />
           </li>
         ))}
       </ul>
@@ -196,6 +288,61 @@ function ConflictCard({
         </ul>
       </div>
     </section>
+  )
+}
+
+/**
+ * A session in a conflict card with its fixes. Its buttons are described by
+ * its title, so each reads as "Edit, Hiring sync" in a list of several.
+ */
+function ConflictSessionRow({
+  session,
+  freeStart,
+  onEdit,
+  onMove,
+}: {
+  session: Session
+  /** Where "Move to next free slot" puts it; unset when nothing fits. */
+  freeStart: number | undefined
+  onEdit: SessionEditing["onEditSession"]
+  onMove: MoveSession
+}) {
+  const titleId = useId()
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 bg-card px-4 py-3 text-sm">
+      <SessionSummary session={session} titleId={titleId} />
+      <span className="flex flex-wrap gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          aria-describedby={titleId}
+          disabled={freeStart === undefined}
+          onClick={() => freeStart !== undefined && onMove(session, freeStart)}
+        >
+          <CalendarClockIcon aria-hidden />
+          {freeStart === undefined ? (
+            "No free slot today"
+          ) : (
+            <>
+              Move to next free slot{" "}
+              <span className="text-muted-foreground tabular-nums">
+                {formatTimeRange(freeStart, freeStart + session.duration)}
+              </span>
+            </>
+          )}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          aria-describedby={titleId}
+          data-session-id={session.id}
+          onClick={(event) => onEdit(session, event.currentTarget)}
+        >
+          <PencilIcon aria-hidden />
+          Edit
+        </Button>
+      </span>
+    </div>
   )
 }
 

@@ -8,11 +8,11 @@ export const Route = createFileRoute("/")({
 })
 
 function Home() {
-  const { view } = Route.useSearch()
+  const { view, conflict } = Route.useSearch()
 
   return (
     <ScheduleProvider>
-      <SchedulerPage view={view} />
+      <SchedulerPage view={view} conflict={conflict} />
     </ScheduleProvider>
   )
 }

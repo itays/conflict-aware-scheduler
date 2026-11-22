@@ -14,9 +14,27 @@ import { SessionDialog } from "./session-dialog"
 
 export const viewSearchSchema = z.object({
   view: z.enum(["day", "agenda"]).default("day").catch("day"),
+  /**
+   * The conflict in focus, as the comma-joined ids of its sessions: the
+   * Agenda shows only it, the Day view highlights it.
+   */
+  conflict: z.string().optional().catch(undefined),
 })
 
 export type View = z.infer<typeof viewSearchSchema>["view"]
+
+export const conflictParam = (sessions: readonly Session[]) =>
+  sessions.map((s) => s.id).join(",")
+
+export const focusedSessionIds = (conflict: string | undefined) =>
+  conflict?.split(",").filter(Boolean)
+
+/** Sessions whose conflicts a view focuses on: filtered or highlighted. */
+export type ConflictFocus = { focus?: string[] }
+
+/** The element standing for a session in whichever view is showing. */
+export const sessionElement = (id: string) =>
+  document.querySelector<HTMLElement>(`[data-session-id="${id}"]`)
 
 /** How a view asks the page to open the session dialog. */
 export type SessionEditing = {
@@ -24,7 +42,14 @@ export type SessionEditing = {
   onEditSession: (session: Session, opener: HTMLElement) => void
 }
 
-export function SchedulerPage({ view }: { view: View }) {
+export function SchedulerPage({
+  view,
+  conflict,
+}: {
+  view: View
+  conflict?: string
+}) {
+  const focus = focusedSessionIds(conflict)
   const { dispatch } = useSchedule()
   // `key` remounts the form on every opening; `session` outlives `open` so
   // the dialog keeps its content while it animates closed.
@@ -41,9 +66,7 @@ export function SchedulerPage({ view }: { view: View }) {
   const returnFocusTo = () => {
     if (opener.current?.isConnected) return opener.current
     const id = dialog.session?.id
-    const moved = id
-      ? document.querySelector<HTMLElement>(`[data-session-id="${id}"]`)
-      : null
+    const moved = id ? sessionElement(id) : null
     return moved ?? newSessionButton.current
   }
 
@@ -83,9 +106,9 @@ export function SchedulerPage({ view }: { view: View }) {
       </header>
       <main className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6">
         {view === "agenda" ? (
-          <AgendaView {...editing} />
+          <AgendaView {...editing} focus={focus} />
         ) : (
-          <DayView {...editing} />
+          <DayView {...editing} focus={focus} />
         )}
       </main>
       <SessionDialog

@@ -85,7 +85,7 @@ describe("DayView with more than three overlapping sessions", () => {
     duration: 60,
   }))
 
-  it("folds the sessions past the third lane into +N", async () => {
+  it("folds the sessions past the third lane into +N, which opens their conflict", async () => {
     const { router, user } = await renderDay(crowded)
     expect(sessionList().getAllByRole("listitem")).toHaveLength(3)
     for (const title of ["A", "B", "C"]) expect(blockFor(title)).toBeVisible()
@@ -96,6 +96,9 @@ describe("DayView with more than three overlapping sessions", () => {
     expect(more).toHaveTextContent("+2")
 
     await user.click(more)
-    expect(router.state.location.search).toEqual({ view: "agenda" })
+    expect(router.state.location.search).toEqual({
+      view: "agenda",
+      conflict: "D,E",
+    })
   })
 })
