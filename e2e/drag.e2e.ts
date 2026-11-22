@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page, test } from "@playwright/test"
+import { dayBlock, dayGrid, open } from "./app"
 
 /** Presses on a block and moves the mouse `dy` pixels (one per minute). */
 async function startDrag(page: Page, block: Locator, dy: number) {
@@ -12,15 +13,8 @@ async function startDrag(page: Page, block: Locator, dy: number) {
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/?view=day")
-  await page.waitForLoadState("networkidle")
+  await open(page, "?view=day")
 })
-
-function dayBlock(page: Page, title: string) {
-  return page
-    .getByRole("region", { name: "Day" })
-    .getByRole("listitem", { name: new RegExp(`^${title},`) })
-}
 
 test("dropping a session onto another adds a conflict", async ({ page }) => {
   const status = page.getByRole("status")
@@ -91,10 +85,7 @@ test("a drag that scrolled the grid keeps its place on changing lane", async ({
   // Panel wrap-up is held by its middle at the grid's bottom edge until the
   // grid stops scrolling. That point is 23:45 for its start; on the way it
   // joins On-call handoff's conflict and narrows to a lane.
-  const grid = await page
-    .getByRole("region", { name: "Day" })
-    .locator(".overflow-y-auto")
-    .boundingBox()
+  const grid = await dayGrid(page).boundingBox()
   if (!grid) throw new Error("Grid is not visible")
   const label = page.locator("[data-drag-label]")
   await dayBlock(page, "Panel wrap-up").scrollIntoViewIfNeeded()
