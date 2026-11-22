@@ -35,5 +35,6 @@ Each feature file starts with an H1 and one paragraph on the user-visible behavi
 - [Day view](./day-view.md): the time grid with lanes, hatched overlap minutes, gutter markers, the `+N` overflow and the past-midnight cue.
 - [Agenda view](./agenda-view.md): the sample day in start order, with free slots, back-to-back notes, conflict cards and the past-midnight session.
 - [View parameter](./view-param.md): the `view` search parameter, its `day` default, unknown values, and the header's Day/Agenda switch.
+- [Drag to move](./drag.md): dragging a Day block by mouse, pen or touch in 15-minute steps, with the live label, live conflict marks, clamping, Esc, and the drop.
 - [Session dialog](./session-dialog.md): adding, editing and deleting sessions through one dialog, its overlap preview and validation, focus return, and `Clear day` with the empty states.
 - [Theme](./theme.md): Light, Dark and System themes from the header menu.
