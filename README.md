@@ -2,6 +2,8 @@
 
 A single-page app for planning one day of sessions and seeing where they collide. It opens on a sample day with two conflicts, shows the day as a time grid (**Day**) or as a list (**Agenda**), and helps you resolve each conflict by dragging, editing, or moving a session to the next free slot.
 
+Live at https://conflict-aware-scheduler.itaysidis.workers.dev, redeployed on every push to `main`.
+
 ## Run it
 
 Requires Node 20.19+ or 22.12+.
