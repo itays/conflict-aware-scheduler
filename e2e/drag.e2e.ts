@@ -60,6 +60,31 @@ test("releasing over the block after Esc does not open the editor", async ({
   await expect(page.getByRole("dialog")).toHaveCount(0)
 })
 
+test("each arrow press moves one step while the grid scrolls", async ({
+  page,
+}) => {
+  // From 17:00, the presses scroll the grid, then Panel wrap-up changes lane
+  // as it reaches On-call handoff at 23:30.
+  const wrapUp = dayBlock(page, "Panel wrap-up").getByRole("button")
+  await wrapUp.focus()
+  await page.keyboard.press("Space")
+  for (let i = 0; i < 26; i++) await page.keyboard.press("ArrowDown")
+  await expect(page.locator("[data-drag-label]")).toHaveText("23:30")
+  await page.keyboard.press("ArrowDown")
+  await page.keyboard.press("ArrowDown")
+  await page.keyboard.press("ArrowUp")
+  await expect(page.locator("[data-drag-label]")).toHaveText("23:45")
+  await page.keyboard.press("Space")
+
+  await expect(dayBlock(page, "Panel wrap-up")).toHaveAccessibleName(
+    "Panel wrap-up, 23:45 – 00:30"
+  )
+  await expect(page.locator("[data-drag-announcer]")).toHaveText(
+    "Panel wrap-up moved to 23:45, overlaps 1 session"
+  )
+  await expect(page.getByRole("dialog")).toHaveCount(0)
+})
+
 test("a drag that scrolled the grid keeps its place on changing lane", async ({
   page,
 }) => {
