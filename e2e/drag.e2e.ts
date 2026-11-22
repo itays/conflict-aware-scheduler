@@ -59,3 +59,38 @@ test("releasing over the block after Esc does not open the editor", async ({
 
   await expect(page.getByRole("dialog")).toHaveCount(0)
 })
+
+test("a drag that scrolled the grid keeps its place on changing lane", async ({
+  page,
+}) => {
+  // Panel wrap-up is held by its middle at the grid's bottom edge until the
+  // grid stops scrolling. That point is 23:45 for its start; on the way it
+  // joins On-call handoff's conflict and narrows to a lane.
+  const grid = await page
+    .getByRole("region", { name: "Day" })
+    .locator(".overflow-y-auto")
+    .boundingBox()
+  if (!grid) throw new Error("Grid is not visible")
+  const label = page.locator("[data-drag-label]")
+  await dayBlock(page, "Panel wrap-up").scrollIntoViewIfNeeded()
+  await startDrag(page, dayBlock(page, "Panel wrap-up"), 10)
+  const box = await dayBlock(page, "Panel wrap-up").boundingBox()
+  const x = (box?.x ?? 0) + (box?.width ?? 0) / 2
+  const edge = grid.y + grid.height - 3
+  let last = ""
+  for (let still = 0, i = 0; still < 10 && i < 200; i++) {
+    await page.mouse.move(x, edge + (i % 2))
+    await page.waitForTimeout(50)
+    const now = (await label.textContent()) ?? ""
+    still = now === last ? still + 1 : 0
+    last = now
+  }
+  expect(last).toBe("23:45")
+
+  await page.mouse.move(x, grid.y + grid.height + 20, { steps: 3 })
+  await expect(label).toHaveText("23:55")
+  await page.mouse.up()
+  await expect(dayBlock(page, "Panel wrap-up")).toHaveAccessibleName(
+    "Panel wrap-up, 23:55 – 00:40"
+  )
+})

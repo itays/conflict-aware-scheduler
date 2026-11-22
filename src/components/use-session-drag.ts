@@ -3,6 +3,8 @@ import {
   type DragEndEvent,
   type DragMoveEvent,
   type DragStartEvent,
+  getClientRect,
+  getScrollableAncestors,
   PointerSensor,
   type PointerSensorOptions,
   TouchSensor,
@@ -71,6 +73,7 @@ export function useSessionDrag(pxPerMinute: number) {
   const contextProps = {
     sensors,
     modifiers: [restrictToVerticalAxis],
+    measuring: { draggable: { measure: measureIgnoringScroll } },
     accessibility: { container: announcer ?? undefined },
     onDragStart: ({ active }: DragStartEvent) => {
       const session = schedule.find((s) => s.id === active.id)
@@ -96,6 +99,22 @@ export function useSessionDrag(pxPerMinute: number) {
   } satisfies ComponentProps<typeof DndContext>
 
   return { drag, contextProps, announcerRef: setAnnouncer }
+}
+
+/**
+ * A block's rect with its scrolled ancestors' offsets added back. dnd-kit
+ * re-measures the dragged block when it resizes, as it does on changing
+ * lanes, and counts any change in its rect as the block moving. A viewport
+ * rect changes with every scroll that dnd-kit already adds to the drag, so
+ * a drag that had scrolled the grid jumped on its next lane change.
+ */
+function measureIgnoringScroll(node: HTMLElement) {
+  const rect = getClientRect(node, { ignoreTransform: true })
+  const scrolled = getScrollableAncestors(node).reduce(
+    (sum, ancestor) => sum + ancestor.scrollTop,
+    0
+  )
+  return { ...rect, top: rect.top + scrolled, bottom: rect.bottom + scrolled }
 }
 
 /**
