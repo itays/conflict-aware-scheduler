@@ -1,0 +1,10 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "conflict-aware-scheduler",
+  "account_id": "b3bcd7b1a934b1946116bc224a6fc128",
+  "compatibility_date": "2026-11-22",
+  "main": "@tanstack/react-start/server-entry",
+  "observability": {
+    "enabled": true
+  }
+}
