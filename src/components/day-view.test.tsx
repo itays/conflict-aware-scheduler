@@ -1,5 +1,5 @@
-import { screen, within } from "@testing-library/react"
-import { describe, expect, it } from "vitest"
+import { act, screen, within } from "@testing-library/react"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { sampleDay } from "@/schedule/sample-day"
 import type { Schedule } from "@/schedule/schedule"
 import { renderApp } from "@/test/render-app"
@@ -193,5 +193,33 @@ describe("DayView keyboard dragging", () => {
     expect(button).toHaveAccessibleDescription(
       "Press Space to pick up, the up and down arrows to move 15 minutes, Space to drop and Escape to cancel."
     )
+  })
+})
+
+describe("DayView's date header", () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it("shows today's date", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date(2026, 10, 22, 9, 0))
+    await renderDay()
+    const date = within(screen.getByRole("region", { name: "Day" })).getByText(
+      "Sunday, November 22"
+    )
+    expect(date.closest("time")).toHaveAttribute("datetime", "2026-11-22")
+  })
+
+  it("rolls over to the next day at midnight", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date(2026, 10, 22, 23, 59, 30))
+    await renderDay()
+    expect(screen.getByText("Sunday, November 22")).toBeInTheDocument()
+    act(() => {
+      vi.advanceTimersByTime(60_000)
+    })
+    const date = screen.getByText("Monday, November 23")
+    expect(date.closest("time")).toHaveAttribute("datetime", "2026-11-23")
   })
 })
