@@ -1,6 +1,6 @@
 # Agenda view
 
-The Agenda shows the day as text, in start order. It lists each session with its start, end and duration, the free slots between sessions, a `Back-to-back, no conflict` note where one session ends as the next begins, and one card per conflict. A session that runs past midnight shows `ends next day`. Clicking a session row outside a conflict opens the session dialog for that session. Inside a conflict card, each session instead has `Move to next free slot` and `Edit` (see `conflict-resolution.md`). With `?conflict=<ids>` the Agenda shows only that conflict's card. An empty day shows a `Nothing scheduled` empty state instead of the list.
+The Agenda shows the day as text, in start order. It lists each session with its start, end and duration, the free slots between sessions, a `Back-to-back, no conflict` note where one session ends as the next begins, and one card per conflict. A session that runs past midnight shows `ends next day`. Clicking a session row outside a conflict opens the session dialog for that session. Inside a conflict card, each session instead has `Move to next free slot` and `Edit` (see `conflict-resolution.md`). With `?conflict=<ids>` the Agenda shows only the cards of conflicts holding any of those sessions: one id is enough to show its whole conflict. An empty day shows a `Nothing scheduled` empty state instead of the list.
 
 ## Sub-features
 

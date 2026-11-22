@@ -1,11 +1,11 @@
 ---
 name: verify
-description: Drive the Conflict-Aware Scheduler web app (TanStack Start, single page at `/`) in a real Chromium browser and capture proof of what a user sees. Use to confirm a UI change works in the running app, to prove the header conflict summary, the Day view's conflict marks and the Agenda conflict cards match the sample day, to prove adding, editing, deleting and clearing sessions through the session dialog, to prove resolving conflicts from the Agenda's cards (move to next free slot, Show in Day view, the conflict filter), to prove dragging sessions in the Day view by mouse or touch, or whenever a change touches the schedule module, the Day view, the Agenda, the session dialog, the header or routing and unit tests alone are not proof.
+description: Drive the Conflict-Aware Scheduler web app (TanStack Start, single page at `/`) in a real Chromium browser and capture proof of what a user sees. Use to confirm a UI change works in the running app, to prove the header conflict summary, the Day view's conflict marks and the Agenda conflict cards match the sample day, to prove adding, editing, deleting and clearing sessions through the session dialog, to prove resolving conflicts from the Agenda's cards (move to next free slot, Show in Day view, the conflict filter), to prove dragging sessions in the Day view by mouse, touch or keyboard and its screen reader announcements, or whenever a change touches the schedule module, the Day view, the Agenda, the session dialog, the header or routing and unit tests alone are not proof.
 ---
 
 # Verify the Conflict-Aware Scheduler
 
-The app is one web page. Users touch the header (title, conflict summary, Day/Agenda switch, `Clear day`, `New session`, theme toggle) and the main area, which shows the Day view's time grid (`?view=day`, the default) or the Agenda (`?view=agenda`). An optional `conflict` parameter (comma-joined session ids) filters the Agenda to that conflict or highlights it in the Day view. Clicking a Day block, an Agenda row, a conflict card's `Edit`, or `New session` opens one shared session dialog. Conflict cards also move a session to its next free slot, and dragging a Day block up or down moves its start. The schedule lives in memory and every page load starts from the sample day in `src/schedule/sample-day.ts`. Edits last until the next load, so there is no data directory and no seeding step: a reload is a reset.
+The app is one web page. Users touch the header (title, conflict summary, Day/Agenda switch, `Clear day`, `New session`, theme toggle) and the main area, which shows the Day view's time grid (`?view=day`, the default) or the Agenda (`?view=agenda`). An optional `conflict` parameter (comma-joined session ids) filters the Agenda to the conflicts holding any of those sessions, or highlights them in the Day view. Clicking a Day block, an Agenda row, a conflict card's `Edit`, or `New session` opens one shared session dialog. Conflict cards also move a session to its next free slot, and dragging a Day block up or down, by pointer or with Space and the arrow keys, moves its start. The schedule lives in memory and every page load starts from the sample day in `src/schedule/sample-day.ts`. Edits last until the next load, so there is no data directory and no seeding step: a reload is a reset.
 
 The harness is Playwright's Chromium, driven by Node scripts in `scripts/`. Both are already installed by `bun install`. Every helper is run from the repo root.
 
@@ -74,7 +74,7 @@ node .claude/skills/verify/scripts/conflict-resolution.mjs "$URL" "$ARTIFACTS/co
 
 It prints one `ok`/`FAIL` line per check and ends with `PASS: N checks`, exiting 0. See [`features/conflict-resolution.md`](features/conflict-resolution.md).
 
-Dragging has its own proof too. It drives the mouse and CDP touch events, checks the live layout before each drop and the summary after it, against its own oracle:
+Dragging has its own proof too. It drives the mouse, the keyboard and CDP touch events, checks the live layout before each drop, the summary after it and the drag announcements, against its own oracle:
 
 ```sh
 node .claude/skills/verify/scripts/drag.mjs "$URL" "$ARTIFACTS/drag"
@@ -105,8 +105,9 @@ For a step-by-step interaction the scripts don't cover, write a short Node scrip
 | `getByRole("button", { name: "Toggle theme" })`     | theme menu: `Light`, `Dark`, `System`                                                       |
 | `getByRole("navigation", { name: "View" })`         | Day/Agenda switch: links `Day` and `Agenda`; the current one has `aria-current="page"`      |
 | `getByRole("region", { name: "Day" })`              | the Day view's time grid                                                                    |
-| `day.getByRole("list", { name: "Sessions" })`       | the grid's session blocks, each a `listitem` named `<title>, HH:mm – HH:mm` holding a button that opens the session; pressing and moving the button drags it |
+| `day.getByRole("list", { name: "Sessions" })`       | the grid's session blocks, each a `listitem` named `<title>, HH:mm – HH:mm` holding a button that opens the session (click or Enter); pressing and moving the button drags it, and so do Space, the arrow keys and Space again |
 | `locator("[data-drag-label]")`                      | the gutter label showing the landing start `HH:mm` during a drag; hidden from the accessibility tree, absent otherwise |
+| `locator("[data-drag-announcer]")`                  | the Day view's visually hidden `aria-live` region: `Picked up …`, `<title> at HH:mm` per keyboard step, `<title> moved to HH:mm, overlaps N sessions`, `Move cancelled. …`. It has no role, so `getByRole("status")` stays unique |
 | `getByRole("list", { name: "Conflicts" })`          | the gutter markers, one `Conflict HH:mm – HH:mm` item per conflict                          |
 | `getByRole("link", { name: /^\+\d+ more session/ })` | the `+N` control for sessions folded past three lanes; it opens the Agenda filtered to their conflict (`&conflict=<ids>`) |
 | `getByRole("link", { name: "Clear highlight" })`    | the Day view's focus bar (with `?conflict=`); back to `?view=day`. Highlighted blocks hold the hidden text `Highlighted` |

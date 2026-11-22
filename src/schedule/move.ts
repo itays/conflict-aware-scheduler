@@ -1,7 +1,7 @@
 import { LAST_START } from "./schedule"
 
-/** A drag moves a session's start in steps this long. */
-const MOVE_STEP_MINUTES = 15
+/** A drag, or one arrow press, moves a session's start this many minutes. */
+export const MOVE_STEP_MINUTES = 15
 
 /**
  * The start a session lands on when dragged `minutes` away from `start`:

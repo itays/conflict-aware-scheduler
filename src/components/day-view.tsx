@@ -43,7 +43,8 @@ export function DayView({
   focus,
 }: SessionEditing & ConflictFocus) {
   const { schedule } = useSchedule()
-  const { drag, contextProps, announcerRef } = useSessionDrag(PX_PER_MINUTE)
+  const { drag, contextProps, announcerRef, announcement } =
+    useSessionDrag(PX_PER_MINUTE)
   // While dragging, lay the day out as if the session already sat at its new
   // start, so lanes, hatching, gutter markers and the highlight follow every
   // step.
@@ -66,6 +67,15 @@ export function DayView({
     focused?.[0]?.sessions[0].start ??
     layout.blocks[0]?.top ??
     DEFAULT_FIRST_MINUTE
+  // A session moved by the arrow keys stays in view as it goes.
+  useEffect(() => {
+    if (!drag?.byKeyboard) return
+    scroller.current
+      ?.querySelector(`[data-session-id="${drag.session.id}"]`)
+      ?.closest("li")
+      ?.scrollIntoView({ block: "nearest" })
+  }, [drag])
+
   useEffect(() => {
     if (hasScrolled.current || !scroller.current) return
     scroller.current.scrollTop = toPx(
@@ -92,6 +102,14 @@ export function DayView({
       ) : (
         <DndContext {...contextProps}>
           <div ref={announcerRef} hidden />
+          <div
+            data-drag-announcer
+            aria-live="assertive"
+            aria-atomic
+            className="sr-only"
+          >
+            {announcement}
+          </div>
           <div
             ref={scroller}
             className="h-[calc(100svh-9rem)] min-h-96 overflow-y-auto rounded-xl border bg-card py-3"
@@ -254,7 +272,9 @@ function SessionBlock({
 }) {
   const { session, inConflict } = block
   const timeRange = formatTimeRange(session.start, sessionEnd(session))
-  const { setNodeRef, listeners } = useDraggable({ id: session.id })
+  const { setNodeRef, listeners, attributes } = useDraggable({
+    id: session.id,
+  })
   const dragging = draggedFrom !== undefined
   return (
     <li
@@ -268,6 +288,9 @@ function SessionBlock({
           ? "border-destructive/70 bg-destructive/10 text-destructive"
           : "border-session-border bg-session text-session-foreground",
         highlighted && HIGHLIGHT_RING,
+        // The ring sits outside the block, so a 5-minute session still shows
+        // it, and above its neighbours.
+        "has-focus-visible:z-30 has-focus-visible:outline-3 has-focus-visible:outline-offset-1 has-focus-visible:outline-ring",
         // The dragged block rides above highlighted ones.
         dragging ? "z-20 shadow-lg" : highlighted && "z-10"
       )}
@@ -276,10 +299,11 @@ function SessionBlock({
       <button
         type="button"
         data-session-id={session.id}
+        aria-describedby={attributes["aria-describedby"]}
         {...listeners}
         onClick={(event) => onEdit(session, event.currentTarget)}
         className={cn(
-          "relative block size-full cursor-pointer touch-manipulation text-left outline-none select-none [-webkit-touch-callout:none] hover:bg-foreground/5 focus-visible:ring-3 focus-visible:ring-ring/60 focus-visible:ring-inset",
+          "relative block size-full cursor-pointer touch-manipulation text-left outline-none select-none [-webkit-touch-callout:none] hover:bg-foreground/5",
           dragging && "cursor-grabbing"
         )}
       >

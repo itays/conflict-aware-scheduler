@@ -1,6 +1,6 @@
 # Session dialog
 
-One dialog adds, edits and deletes sessions. `New session` in the header opens it empty. Clicking a Day block or an Agenda row, or a conflict card's `Edit`, opens it filled with that session. It has a title, a start time (`HH:mm`) and a duration (15, 30, 45, 60 or 90 minutes, or a custom number of minutes). It shows the computed end time, adding `next day` past midnight, and lists the sessions the draft would overlap while the user types. Overlaps never block Save (ADR 0001). Only invalid input does, with a message under the field. `Clear day` in the header empties the schedule, and both views then show a `Nothing scheduled` empty state with `Add the first session`.
+One dialog adds, edits and deletes sessions. `New session` in the header opens it empty. Clicking a Day block (or pressing Enter on it) or an Agenda row, or a conflict card's `Edit`, opens it filled with that session. Space on a Day block picks the session up to drag instead (see `drag.md`). It has a title, a start time (`HH:mm`) and a duration (15, 30, 45, 60 or 90 minutes, or a custom number of minutes). It shows the computed end time, adding `next day` past midnight, and lists the sessions the draft would overlap while the user types. Overlaps never block Save (ADR 0001). Only invalid input does, with a message under the field. `Clear day` in the header empties the schedule, and both views then show a `Nothing scheduled` empty state with `Add the first session`.
 
 ## Sub-features
 
@@ -18,7 +18,7 @@ One dialog adds, edits and deletes sessions. `New session` in the header opens i
 ## How to get to it (user POV)
 
 - Click `New session` in the header.
-- Click any session block in the Day view, any session row in the Agenda outside a conflict, or `Edit` on a session inside a conflict card.
+- Click any session block in the Day view (or focus it and press Enter), any session row in the Agenda outside a conflict, or `Edit` on a session inside a conflict card.
 - Click `Clear day`, then `Add the first session`.
 
 ## Driving it with Playwright

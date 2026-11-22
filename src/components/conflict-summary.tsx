@@ -1,10 +1,8 @@
 import { Link } from "@tanstack/react-router"
 import { CircleCheckIcon, TriangleAlertIcon } from "lucide-react"
+import { plural } from "@/lib/utils"
 import { findConflicts } from "@/schedule/schedule"
 import { useSchedule } from "./schedule-provider"
-
-const plural = (count: number, noun: string) =>
-  `${count} ${noun}${count === 1 ? "" : "s"}`
 
 export function ConflictSummary() {
   const { schedule } = useSchedule()
