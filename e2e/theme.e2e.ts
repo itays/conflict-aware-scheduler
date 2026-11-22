@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test"
-import { open } from "./app"
+import { openHydrated } from "./app"
 
 test.use({ colorScheme: "light" })
 
@@ -11,7 +11,7 @@ async function pickTheme(page: Page, name: "Light" | "Dark" | "System") {
 }
 
 test("Dark survives a reload", async ({ page }) => {
-  await open(page, "?view=day")
+  await openHydrated(page, "?view=day")
   const html = page.locator("html")
   await expect(html).not.toContainClass("dark")
 
@@ -23,7 +23,7 @@ test("Dark survives a reload", async ({ page }) => {
 })
 
 test("a stored Dark applies before any app script runs", async ({ page }) => {
-  await open(page, "?view=day")
+  await openHydrated(page, "?view=day")
   await pickTheme(page, "Dark")
   await expect(page.locator("html")).toContainClass("dark")
 
@@ -42,7 +42,7 @@ test("a stored Dark applies before any app script runs", async ({ page }) => {
 })
 
 test("System follows the browser's colour scheme live", async ({ page }) => {
-  await open(page, "?view=day")
+  await openHydrated(page, "?view=day")
   await pickTheme(page, "Dark")
   await pickTheme(page, "System")
   const html = page.locator("html")

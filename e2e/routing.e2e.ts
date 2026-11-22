@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test"
-import { addSession, dayBlock, open } from "./app"
+import { addSession, dayBlock, openHydrated } from "./app"
 
 const pageErrors = new WeakMap<Page, Error[]>()
 
@@ -31,7 +31,7 @@ test("/ redirects to the Day view", async ({ page }) => {
 })
 
 test("the Agenda survives a reload", async ({ page }) => {
-  await open(page, "?view=agenda")
+  await openHydrated(page, "?view=agenda")
   await expect(page.getByRole("list", { name: "Agenda" })).toBeVisible()
 
   await page.reload()
@@ -41,13 +41,13 @@ test("the Agenda survives a reload", async ({ page }) => {
 })
 
 test("an unknown view falls back to the Day view", async ({ page }) => {
-  await open(page, "?view=bogus")
+  await openHydrated(page, "?view=bogus")
   await expect(page.getByRole("region", { name: "Day" })).toBeVisible()
   await expect(viewLink(page, "Day")).toHaveAttribute("aria-current", "page")
 })
 
 test("a conflict that matches nothing reads as resolved", async ({ page }) => {
-  await open(page, "?view=day&conflict=bogus")
+  await openHydrated(page, "?view=day&conflict=bogus")
   await expect(page.getByText("This conflict is resolved.")).toBeVisible()
   await expect(
     page.getByRole("link", { name: "Clear highlight" })
@@ -56,7 +56,7 @@ test("a conflict that matches nothing reads as resolved", async ({ page }) => {
 })
 
 test("the View switch drops the conflict filter", async ({ page }) => {
-  await open(page, "?view=agenda&conflict=culture,debrief")
+  await openHydrated(page, "?view=agenda&conflict=culture,debrief")
   await expect(page.getByRole("link", { name: "Show all" })).toBeVisible()
 
   await viewLink(page, "Day").click()
@@ -67,7 +67,7 @@ test("the View switch drops the conflict filter", async ({ page }) => {
 test("an added session survives a view switch, not a reload", async ({
   page,
 }) => {
-  await open(page, "?view=day")
+  await openHydrated(page, "?view=day")
   await addSession(page, "Design review", "08:00")
   await expect(dayBlock(page, "Design review")).toHaveAccessibleName(
     "Design review, 08:00 – 08:30"

@@ -1,7 +1,6 @@
 import { expect, type Page } from "@playwright/test"
 
-/** Opens the app and waits for hydration: earlier clicks are dropped. */
-export async function open(page: Page, search: string) {
+export async function openHydrated(page: Page, search: string) {
   await page.goto(`/${search}`)
   await page.waitForLoadState("networkidle")
 }
@@ -16,7 +15,6 @@ export function dayGrid(page: Page) {
   return page.getByRole("region", { name: "Day" }).locator(".overflow-y-auto")
 }
 
-/** Adds a 30-minute session through `New session`. */
 export async function addSession(page: Page, title: string, start: string) {
   await page.getByRole("button", { name: "New session" }).click()
   const dialog = page.getByRole("dialog", { name: "New session" })

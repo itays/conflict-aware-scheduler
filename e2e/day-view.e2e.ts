@@ -1,8 +1,8 @@
 import { expect, type Locator, test } from "@playwright/test"
-import { dayBlock, dayGrid, open } from "./app"
+import { dayBlock, dayGrid, openHydrated } from "./app"
 
 test.beforeEach(async ({ page }) => {
-  await open(page, "?view=day")
+  await openHydrated(page, "?view=day")
 })
 
 async function box(locator: Locator) {

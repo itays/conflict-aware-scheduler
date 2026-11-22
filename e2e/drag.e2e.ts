@@ -5,7 +5,7 @@ import {
   type Page,
   test,
 } from "@playwright/test"
-import { dayBlock, dayGrid, open } from "./app"
+import { dayBlock, dayGrid, openHydrated } from "./app"
 
 /** Presses on a block and moves the mouse `dy` pixels (one per minute). */
 async function startDrag(page: Page, block: Locator, dy: number) {
@@ -19,7 +19,7 @@ async function startDrag(page: Page, block: Locator, dy: number) {
 }
 
 test.beforeEach(async ({ page }) => {
-  await open(page, "?view=day")
+  await openHydrated(page, "?view=day")
 })
 
 test("dropping a session onto another adds a conflict", async ({ page }) => {
@@ -152,10 +152,11 @@ test.describe("touch", () => {
     }
   }
 
-  test("holding still, then moving, drags the session", async ({ page }) => {
+  test("holding still for 250ms, then moving, drags the session", async ({
+    page,
+  }) => {
     const touch = await finger(page, dayBlock(page, "Standup sync"))
     await touch.down()
-    // The hold is the behavior under test: a finger must rest 250ms to drag.
     await page.waitForTimeout(400)
     await touch.move(30)
     await expect(page.locator("[data-drag-label]")).toHaveText("09:00")

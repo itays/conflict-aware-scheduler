@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test"
-import { addSession, dayBlock, open } from "./app"
+import { addSession, dayBlock, openHydrated } from "./app"
 
 const morning = "3 sessions overlap 10:30 – 11:15"
 const afternoon = "2 sessions overlap 14:00 – 14:15"
@@ -21,7 +21,7 @@ function searchOf(page: Page) {
 }
 
 test("the header summary opens the whole Agenda", async ({ page }) => {
-  await open(page, "?view=day")
+  await openHydrated(page, "?view=day")
   await page
     .getByRole("status")
     .getByRole("link", { name: "2 conflicts · 5 sessions" })
@@ -34,7 +34,7 @@ test("the header summary opens the whole Agenda", async ({ page }) => {
 test("moving a session to its free slot resolves its conflict", async ({
   page,
 }) => {
-  await open(page, "?view=agenda")
+  await openHydrated(page, "?view=agenda")
   await cardRow(page, afternoon, "Recruiter debrief")
     .getByRole("button", { name: "Move to next free slot 14:15 – 14:45" })
     .click()
@@ -48,7 +48,7 @@ test("moving a session to its free slot resolves its conflict", async ({
 test("Show in Day view highlights the conflict and scrolls to it", async ({
   page,
 }) => {
-  await open(page, "?view=agenda")
+  await openHydrated(page, "?view=agenda")
   await page
     .getByRole("region", { name: morning, exact: true })
     .getByRole("link", { name: "Show in Day view" })
@@ -92,7 +92,7 @@ test("Show in Day view highlights the conflict and scrolls to it", async ({
 })
 
 test("+N opens the Agenda filtered to its conflict", async ({ page }) => {
-  await open(page, "?view=day")
+  await openHydrated(page, "?view=day")
   await addSession(page, "Extra hold", "10:45")
   await page
     .getByRole("region", { name: "Day" })
@@ -117,7 +117,7 @@ test("+N opens the Agenda filtered to its conflict", async ({ page }) => {
 test("resolving a filtered conflict moves focus to Show all", async ({
   page,
 }) => {
-  await open(page, "?view=agenda&conflict=culture,debrief")
+  await openHydrated(page, "?view=agenda&conflict=culture,debrief")
   await expect(cards(page)).toHaveCount(1)
   await cardRow(page, afternoon, "Recruiter debrief")
     .getByRole("button", { name: "Move to next free slot 14:15 – 14:45" })

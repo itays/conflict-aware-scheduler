@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test"
-import { dayBlock, open } from "./app"
+import { dayBlock, openHydrated } from "./app"
 
 test.beforeEach(async ({ page }) => {
-  await open(page, "?view=day")
+  await openHydrated(page, "?view=day")
 })
 
 test("a session that overlaps another still saves", async ({ page }) => {
