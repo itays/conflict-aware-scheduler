@@ -23,7 +23,11 @@ npm run test:e2e                      # end-to-end tests (Playwright, Chromium)
 npm run typecheck && npm run check    # TypeScript, then Biome format and lint
 ```
 
-`test:e2e` builds the app and serves the production build on port 4173; `test:e2e:smoke` runs only the `@smoke` test, and `test:e2e:headed` and `test:e2e:ui` show the browser. CI (`.github/workflows/ci.yml`) runs lint, typecheck, unit tests, the build and the e2e smoke test on pull requests and pushes to `main`. A Husky pre-commit hook runs Biome on staged files, then typecheck and unit tests. `npm run check -- --write` applies Biome's safe fixes.
+`test:e2e` builds the app and serves the production build on port 4173 through workerd, the Cloudflare Workers runtime; `test:e2e:smoke` runs only the `@smoke` test, and `test:e2e:headed` and `test:e2e:ui` show the browser. CI (`.github/workflows/ci.yml`) runs lint, typecheck, unit tests, the build and the e2e smoke test on pull requests and pushes to `main`. A Husky pre-commit hook runs Biome on staged files, then typecheck and unit tests. `npm run check -- --write` applies Biome's safe fixes.
+
+## Deploy
+
+The app runs on Cloudflare Workers through `@cloudflare/vite-plugin`, configured in `wrangler.jsonc`. CI deploys every push to `main` after the checks and e2e smoke test pass, using the `CLOUDFLARE_API_TOKEN` repository secret. To deploy by hand, log in once with `npx wrangler login`, then run `npm run deploy`.
 
 ## What it does
 
