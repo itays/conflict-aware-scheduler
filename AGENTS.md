@@ -1,5 +1,7 @@
 # AGENTS.md
 
+**Design boards**: `sketches/` holds board A (Day view) and board B (Agenda). Match them when building UI.
+
 ## Agent skills
 
 ### Issue tracker
