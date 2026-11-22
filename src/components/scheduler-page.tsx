@@ -80,7 +80,12 @@ export function SchedulerPage({
   }
 
   return (
-    <div className="flex min-h-svh flex-col">
+    // The Day grid scrolls inside itself, so its page is one screen tall and
+    // the grid takes whatever height the header leaves; the Agenda scrolls
+    // the page.
+    <div
+      className={cn("flex flex-col", view === "day" ? "h-svh" : "min-h-svh")}
+    >
       <header className="flex flex-wrap items-center gap-3 border-b px-4 py-3 sm:px-6">
         <h1 className="flex items-center gap-2 font-semibold">
           <span className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
@@ -104,7 +109,7 @@ export function SchedulerPage({
           <ModeToggle />
         </div>
       </header>
-      <main className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6">
+      <main className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-4 py-6 sm:px-6">
         {view === "agenda" ? (
           <AgendaView {...editing} focus={focus} />
         ) : (

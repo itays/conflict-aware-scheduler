@@ -85,7 +85,10 @@ export function DayView({
   }, [firstMinute])
 
   return (
-    <section aria-labelledby="day-heading" className="flex flex-col gap-3">
+    <section
+      aria-labelledby="day-heading"
+      className="flex min-h-0 flex-1 flex-col gap-3"
+    >
       <h2 id="day-heading" className="sr-only">
         Day
       </h2>
@@ -112,7 +115,7 @@ export function DayView({
           </div>
           <div
             ref={scroller}
-            className="h-[calc(100svh-9rem)] min-h-96 overflow-y-auto rounded-xl border bg-card py-3"
+            className="min-h-96 flex-1 overflow-y-auto rounded-xl border bg-card py-3"
           >
             <div
               className="relative flex"
