@@ -1,6 +1,6 @@
 # Day view
 
-The Day view draws the schedule on a vertical 24-hour grid, one pixel per minute, in the style of design board A. Each session is a block with its title and time range. Overlapping sessions sit side by side in lanes. Sessions in a conflict turn red, carry a warning icon and an `In conflict` label, and only the minutes they overlap another session are hatched. A red marker in the hour gutter spans each conflict. Past three lanes, the extra sessions fold into a `+N` link. A session running past midnight stops at the bottom of the grid with `continues tomorrow`. The grid scrolls on its own and opens just above the first session. Clicking a block opens the session dialog for that session. An empty day shows a `Nothing scheduled` empty state instead of the grid.
+The Day view draws the schedule on a vertical 24-hour grid, one pixel per minute, in the style of design board A. Each session is a block with its title and time range. Overlapping sessions sit side by side in lanes. Sessions in a conflict turn red, carry a warning icon and an `In conflict` label, and only the minutes they overlap another session are hatched. A red marker in the hour gutter spans each conflict. Past three lanes, the extra sessions fold into a `+N` link, which opens the Agenda filtered to their conflict. With `?conflict=<ids>` the conflict's blocks are highlighted under a bar with `Clear highlight`. A session running past midnight stops at the bottom of the grid with `continues tomorrow`. The grid scrolls on its own and opens just above the first session. Clicking a block opens the session dialog for that session. An empty day shows a `Nothing scheduled` empty state instead of the grid.
 
 ## Sub-features
 
@@ -9,9 +9,10 @@ The Day view draws the schedule on a vertical 24-hour grid, one pixel per minute
 - `day-lanes`: overlapping sessions split the width into side-by-side lanes and never cover each other. Back-to-back sessions stay full width and blue.
 - `day-conflict-marks`: conflict blocks are red with a warning icon and `In conflict`, and hatching covers only their overlapping minutes.
 - `day-gutter-markers`: the `Conflicts` list holds one `Conflict HH:mm – HH:mm` marker per conflict.
-- `day-overflow`: with more than three lanes, the extra sessions fold into `+N` (accessible name `+N more sessions`), which opens the Agenda.
+- `day-overflow`: with more than three lanes, the extra sessions fold into `+N` (accessible name `+N more sessions`), which opens the Agenda filtered to their conflict (`?view=agenda&conflict=<folded ids>`).
+- `day-highlight`: with `?conflict=<ids>`, that conflict's blocks (and a `+N` holding any of them) get a ring and a hidden `Highlighted` label, a bar reads `Highlighting the conflict at HH:mm – HH:mm.`, and `Clear highlight` goes back to `?view=day`. See `conflict-resolution.md`.
 - `day-midnight`: `On-call handoff` reads `23:30 – 00:30` with `continues tomorrow` and a dashed bottom edge.
-- `day-opening-scroll`: after hydration the grid opens at 08:00, 30 minutes above the 08:30 `Standup sync`.
+- `day-opening-scroll`: after hydration the grid opens at 08:00, 30 minutes above the 08:30 `Standup sync`. With `?conflict=` it opens 30 minutes above the highlighted conflict's first session, as far as the grid can scroll.
 - `day-edit`: each block holds a button. Activating it opens `dialog "Edit session"` filled with that session.
 - `day-empty`: with no sessions, `region "Day"` holds `Nothing scheduled` and `button "Add the first session"`, and no `list "Sessions"`.
 
@@ -19,6 +20,7 @@ The Day view draws the schedule on a vertical 24-hour grid, one pixel per minute
 
 - Open `/` or `/?view=day`.
 - Click `Day` in the header's `View` switch.
+- Click `Show in Day view` on an Agenda conflict card, which highlights that conflict.
 
 ## Driving it with Playwright
 
@@ -67,11 +69,12 @@ Preconditions:
   console.log("overflow:", await more.textContent())
   await more.scrollIntoViewIfNeeded(); await p.screenshot({ path: out + "/overflow.png" })
   await more.click(); await p.waitForURL(/view=agenda/)
-  console.log("after click:", new URL(p.url()).search, "errors:", JSON.stringify(errors))
+  console.log("after click:", decodeURIComponent(new URL(p.url()).search), "errors:", JSON.stringify(errors))
   await b.close()' "$URL/?view=day" "$ARTIFACTS/day-view"
   ```
 
-  It prints `overflow: +1 more session` and `after click: ?view=agenda errors: []`. `overflow.png` shows a fourth lane holding `+1`.
+  It prints `overflow: +1 more session` and `after click: ?view=agenda&conflict=room-hold errors: []` (`Extra hold` ends first, so it takes the third lane and `Room 4B hold` folds). `overflow.png` shows a fourth lane holding `+1`.
+- **Highlight.** The conflict resolution proof (`conflict-resolution.md`) follows `Show in Day view`, checks exactly the conflict's blocks are highlighted, and clears it.
 - **Editing and the empty state.** The session dialog proof (`session-dialog.md`) opens and deletes a session from a Day block, then clears the day and checks the empty state.
 
 ## Gotchas

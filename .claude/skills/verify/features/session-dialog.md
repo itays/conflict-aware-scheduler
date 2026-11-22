@@ -1,24 +1,24 @@
 # Session dialog
 
-One dialog adds, edits and deletes sessions. `New session` in the header opens it empty, and clicking a session in the Day view or the Agenda opens it filled with that session. It has a title, a start time (`HH:mm`) and a duration (15, 30, 45, 60 or 90 minutes, or a custom number of minutes). It shows the computed end time, adding `next day` past midnight, and lists the sessions the draft would overlap while the user types. Overlaps never block Save (ADR 0001). Only invalid input does, with a message under the field. `Clear day` in the header empties the schedule, and both views then show a `Nothing scheduled` empty state with `Add the first session`.
+One dialog adds, edits and deletes sessions. `New session` in the header opens it empty. Clicking a Day block or an Agenda row, or a conflict card's `Edit`, opens it filled with that session. It has a title, a start time (`HH:mm`) and a duration (15, 30, 45, 60 or 90 minutes, or a custom number of minutes). It shows the computed end time, adding `next day` past midnight, and lists the sessions the draft would overlap while the user types. Overlaps never block Save (ADR 0001). Only invalid input does, with a message under the field. `Clear day` in the header empties the schedule, and both views then show a `Nothing scheduled` empty state with `Add the first session`.
 
 ## Sub-features
 
 - `dialog-new`: `New session` opens `dialog "New session"` with focus in `Title`. The draft starts at `09:00` for 30 minutes.
-- `dialog-edit`: clicking a Day block or an Agenda row opens `dialog "Edit session"` with that session's title, start and duration. A duration that is not a preset opens on `Custom`.
+- `dialog-edit`: clicking a Day block, an Agenda row or a card's `Edit` opens `dialog "Edit session"` with that session's title, start and duration. A duration that is not a preset opens on `Custom`.
 - `dialog-end-time`: `Ends` updates as start or duration change, and reads `HH:mm next day` past midnight.
 - `dialog-overlap-preview`: `list "Overlapping sessions"` names each session the draft would share minutes with, and how many. It reads `No overlaps` when there are none and leaves out the session being edited.
 - `dialog-save-with-overlap`: Save stays enabled when the draft overlaps. Saving updates the header summary and the views.
 - `dialog-validation`: Save is disabled, and a message shows once the field is touched, when the title is empty after trimming (`Enter a title.`), longer than 80 characters, the start does not parse or is past 23:55, the start is off a 5-minute step, or the duration is outside 5 minutes to 24 hours or not a multiple of 5.
 - `dialog-duplicate-title`: a title another session already has saves normally.
 - `dialog-delete`: `Delete` (edit only) removes the session and closes the dialog.
-- `dialog-focus-return`: closing returns focus to the element that opened it. If a save remounted that element, focus goes to the session's new row. After a delete, it goes to `New session`.
+- `dialog-focus-return`: closing returns focus to the element that opened it. If a save remounted that element, focus goes to whatever now stands for the session (`data-session-id`): its new row, or its card's `Edit` when the save put it in a conflict. After a delete, it goes to `New session`.
 - `clear-day`: `Clear day` empties the schedule at once, with no confirmation. The summary reads `No conflicts`, and both views show the empty state, whose button opens `dialog "New session"`.
 
 ## How to get to it (user POV)
 
 - Click `New session` in the header.
-- Click any session block in the Day view, or any session row in the Agenda, including rows inside conflict cards.
+- Click any session block in the Day view, any session row in the Agenda outside a conflict, or `Edit` on a session inside a conflict card.
 - Click `Clear day`, then `Add the first session`.
 
 ## Driving it with Playwright
@@ -30,7 +30,7 @@ Preconditions:
 - **Full proof.** Run `node .claude/skills/verify/scripts/session-dialog.mjs "$URL" "$ARTIFACTS/session-dialog"`. It prints `PASS: 26 checks` and exits 0. In order, it:
   - adds `Design review` at 12:30 for 30 minutes from the Agenda, checks the preview against its oracle (`Lunch with candidate`, 30 min), and checks the summary and the focus return after saving;
   - types each kind of invalid input and checks its message and the disabled Save;
-  - edits `Panel wrap-up` to 23:45 for 60 minutes, checks `00:45 next day`, the summary, and the focus back on the moved row;
+  - edits `Panel wrap-up` to 23:45 for 60 minutes, checks `00:45 next day`, the summary, and that focus lands on the session again (now its card's `Edit`, since it overlaps `On-call handoff`), by `data-session-id`;
   - switches to Day, finds `Design review` in the grid, deletes `Take-home review — Noa B.` from its block, and checks the summary and the focus on `New session`;
   - clicks `Clear day`, checks both empty states, and opens the dialog from `Add the first session`.
 - **Evidence.** `add-preview.png`, `after-add.png`, `invalid.png`, `edit-next-day.png`, `day-empty.png`, `agenda-empty.png` and `report.json` (every check with its detail, plus page errors).

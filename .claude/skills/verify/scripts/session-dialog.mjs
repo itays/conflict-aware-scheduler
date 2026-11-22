@@ -48,6 +48,7 @@ function summaryOf(schedule) {
 }
 
 let schedule = sampleDay()
+const wrapUpId = schedule.find((s) => s.title === "Panel wrap-up").id
 const added = { title: "Design review", start: "12:30", duration: 30 }
 const addedSession = {
   id: "added",
@@ -91,6 +92,10 @@ const closed = () => dialog().waitFor({ state: "detached" })
 const status = () => page.getByRole("status").textContent()
 const focused = () =>
   page.evaluate(() => document.activeElement?.textContent?.trim() ?? "")
+// Every element that stands for a session (Day block, Agenda row, a conflict
+// card's Edit button) carries its id, so this survives a move into a card.
+const focusedSessionId = () =>
+  page.evaluate(() => document.activeElement?.dataset.sessionId ?? "")
 const viewLink = (name) =>
   page.getByRole("navigation", { name: "View" }).getByRole("link", { name })
 
@@ -220,10 +225,12 @@ try {
     (await status()) === summaryOf(schedule),
     await status()
   )
+  // At 23:45 it overlaps On-call handoff, so its opener is now the conflict
+  // card's Edit button rather than the row that was clicked.
   check(
-    "focus returns to the edited row",
-    (await focused()).includes("Panel wrap-up"),
-    await focused()
+    "focus returns to the edited session",
+    (await focusedSessionId()) === wrapUpId,
+    { sessionId: await focusedSessionId(), text: await focused() }
   )
 
   step = "edits survive switching to Day"

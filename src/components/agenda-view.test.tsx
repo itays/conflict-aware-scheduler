@@ -1,17 +1,10 @@
-import { render, screen, within } from "@testing-library/react"
+import { screen, within } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 import type { Schedule } from "@/schedule/schedule"
-import { AgendaView } from "./agenda-view"
-import { ConflictSummary } from "./conflict-summary"
-import { ScheduleProvider } from "./schedule-provider"
+import { renderApp } from "@/test/render-app"
 
 function renderAgenda(initialSchedule?: Schedule) {
-  render(
-    <ScheduleProvider initialSchedule={initialSchedule}>
-      <ConflictSummary />
-      <AgendaView onAddSession={() => {}} onEditSession={() => {}} />
-    </ScheduleProvider>
-  )
+  return renderApp("/?view=agenda", initialSchedule)
 }
 
 function agendaRows() {
@@ -20,15 +13,15 @@ function agendaRows() {
 }
 
 describe("AgendaView on the sample day", () => {
-  it("summarises the conflicts in the header", () => {
-    renderAgenda()
+  it("summarises the conflicts in the header", async () => {
+    await renderAgenda()
     expect(screen.getByRole("status")).toHaveTextContent(
       "2 conflicts · 5 sessions"
     )
   })
 
-  it("lists sessions, free slots and conflicts in start order", () => {
-    renderAgenda()
+  it("lists sessions, free slots and conflicts in start order", async () => {
+    await renderAgenda()
     expect(agendaRows()).toEqual([
       "00:00 – 08:30Free · 8 h 30 min",
       "08:30 – 09:00Standup sync30 min",
@@ -49,8 +42,8 @@ describe("AgendaView on the sample day", () => {
     ])
   })
 
-  it("shows each overlap of a conflict with the minutes it shares", () => {
-    renderAgenda()
+  it("shows each overlap of a conflict with the minutes it shares", async () => {
+    await renderAgenda()
     const card = screen.getByRole("region", {
       name: "3 sessions overlap 10:30 – 11:15",
     })
@@ -59,9 +52,9 @@ describe("AgendaView on the sample day", () => {
         .getAllByRole("listitem")
         .map((item) => item.textContent)
     ).toEqual([
-      "10:00 – 11:00System design — Omer Levi60 min",
-      "10:30 – 11:15Hiring sync45 min",
-      "10:45 – 11:30Room 4B hold45 min",
+      "10:00 – 11:00System design — Omer Levi60 minMove to next free slot 17:45 – 18:45Edit",
+      "10:30 – 11:15Hiring sync45 minMove to next free slot 17:45 – 18:30Edit",
+      "10:45 – 11:30Room 4B hold45 minMove to next free slot 11:15 – 12:00Edit",
       "System design — Omer Levi × Hiring sync30 min",
       "System design — Omer Levi × Room 4B hold15 min",
       "Hiring sync × Room 4B hold30 min",
@@ -70,8 +63,8 @@ describe("AgendaView on the sample day", () => {
 })
 
 describe("AgendaView on an empty day", () => {
-  it("shows an empty state with a way to add the first session", () => {
-    renderAgenda([])
+  it("shows an empty state with a way to add the first session", async () => {
+    await renderAgenda([])
     expect(screen.getByRole("status")).toHaveTextContent("No conflicts")
     expect(screen.queryByRole("list", { name: "Agenda" })).toBeNull()
     expect(screen.getByText("Nothing scheduled")).toBeInTheDocument()

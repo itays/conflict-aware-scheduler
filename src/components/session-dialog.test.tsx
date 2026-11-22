@@ -186,7 +186,7 @@ describe("editing a session", () => {
     expect(row).toHaveFocus()
   })
 
-  it("returns focus to the session's row when saving moves it into a conflict", async () => {
+  it("returns focus to the session's Edit button when saving moves it into a conflict", async () => {
     const { user } = await renderApp("/?view=agenda", twoApart)
     await user.click(screen.getByRole("button", { name: /Standup/ }))
     await screen.findByRole("dialog")
@@ -195,7 +195,9 @@ describe("editing a session", () => {
     await user.click(saveButton())
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
     const card = screen.getByRole("region", { name: /2 sessions overlap/ })
-    expect(within(card).getByRole("button", { name: /Standup/ })).toHaveFocus()
+    expect(
+      within(card).getByRole("button", { name: "Edit", description: "Standup" })
+    ).toHaveFocus()
   })
 
   it("moves focus to New session after a delete", async () => {

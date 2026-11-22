@@ -1,6 +1,8 @@
 import { sampleDay } from "./sample-day"
 
 export const MINUTES_PER_DAY = 1440
+/** The latest minute a session may start: every session starts on its day. */
+export const LAST_START = MINUTES_PER_DAY - 5
 
 /**
  * A titled block of time covering [start, start + duration). `start` is
@@ -130,6 +132,20 @@ export function findConflicts(schedule: Schedule): Conflict[] {
     })
 }
 
+/**
+ * The conflicts that include any of `sessionIds`. A conflict a user picked
+ * stays found while any of its sessions is still in one, even after another
+ * has moved out of it.
+ */
+export function conflictsInvolving(
+  schedule: Schedule,
+  sessionIds: readonly string[]
+): Conflict[] {
+  return findConflicts(schedule).filter((conflict) =>
+    conflict.sessions.some((session) => sessionIds.includes(session.id))
+  )
+}
+
 export function findFreeSlots(schedule: Schedule): FreeSlot[] {
   const slots: FreeSlot[] = []
   let cursor = 0
@@ -141,4 +157,28 @@ export function findFreeSlots(schedule: Schedule): FreeSlot[] {
   if (cursor < MINUTES_PER_DAY)
     slots.push({ start: cursor, end: MINUTES_PER_DAY })
   return slots
+}
+
+/**
+ * The earliest start, at or after `session`'s own, from which its full
+ * duration overlaps no other session, or `undefined` when no such start comes
+ * by `LAST_START`. Sliding a fitting start earlier only stops at the session's
+ * own start or another session's end, so those are the only candidates.
+ */
+export function nextFreeStart(
+  schedule: Schedule,
+  session: Session
+): number | undefined {
+  const candidates = [
+    session.start,
+    ...schedule
+      .filter((other) => other.id !== session.id)
+      .map(sessionEnd)
+      .filter((end) => end > session.start),
+  ].sort((a, b) => a - b)
+  return candidates.find(
+    (start) =>
+      start <= LAST_START &&
+      overlapsWith(schedule, { ...session, start }).length === 0
+  )
 }

@@ -3,6 +3,7 @@ import { sampleDay } from "./sample-day"
 import {
   findConflicts,
   findFreeSlots,
+  nextFreeStart,
   overlapsWith,
   type Schedule,
   type Session,
@@ -187,6 +188,68 @@ describe("overlapsWith", () => {
     expect(
       overlapsWith([editing], { ...editing, start: toMinutes("09:30") })
     ).toEqual([])
+  })
+})
+
+describe("nextFreeStart", () => {
+  const hiringSync = () => {
+    const found = sampleDay().find((s) => s.id === "hiring-sync")
+    if (!found) throw new Error("The sample day has no Hiring sync")
+    return found
+  }
+
+  it("moves the sample day's Hiring sync (10:30, 45 min) to 17:45", () => {
+    expect(nextFreeStart(sampleDay(), hiringSync())).toBe(toMinutes("17:45"))
+  })
+
+  it("leaves the moved session overlapping nothing", () => {
+    const schedule = sampleDay()
+    const moved = {
+      ...hiringSync(),
+      start: nextFreeStart(schedule, hiringSync()) ?? -1,
+    }
+    expect(overlapsWith(schedule, moved)).toEqual([])
+  })
+
+  it("keeps a session that already overlaps nothing where it is", () => {
+    const alone = session("Alone", "09:00", 30)
+    expect(nextFreeStart([alone], alone)).toBe(toMinutes("09:00"))
+  })
+
+  it("takes a slot exactly as long as the session, back-to-back both sides", () => {
+    const moving = session("Moving", "09:00", 30)
+    const schedule = [
+      moving,
+      session("Blocker", "08:30", 60),
+      session("Before", "09:30", 30),
+      session("After", "10:30", 60),
+    ]
+    expect(nextFreeStart(schedule, moving)).toBe(toMinutes("10:00"))
+  })
+
+  it("never looks before the session's current start", () => {
+    const moving = session("Moving", "12:00", 30)
+    const schedule = [moving, session("Blocker", "11:00", 4 * 60)]
+    expect(nextFreeStart(schedule, moving)).toBe(toMinutes("15:00"))
+  })
+
+  it("lets the session run past midnight from a start up to 23:55", () => {
+    const moving = session("Moving", "09:00", 60)
+    const schedule = [
+      moving,
+      session("Blocker", "08:00", toMinutes("23:55") - toMinutes("08:00")),
+    ]
+    expect(nextFreeStart(schedule, moving)).toBe(toMinutes("23:55"))
+  })
+
+  it("finds no free slot when nothing fits by 23:55", () => {
+    const moving = session("Moving", "20:00", 120)
+    const schedule = [
+      moving,
+      session("Evening", "19:00", 4 * 60),
+      session("Late", "23:30", 120),
+    ]
+    expect(nextFreeStart(schedule, moving)).toBeUndefined()
   })
 })
 
