@@ -15,7 +15,7 @@ This directory is the maintained source for verifying what a user sees in the Co
 - After `goto`, wait for `networkidle` before clicking anything that is not a plain link. The server sends the page as HTML before React hydrates, and clicks made before hydration are dropped without an error.
 - Prefer ARIA roles and accessible names (see the handle table in `../SKILL.md`) over CSS selectors or DOM position.
 - Take expected values from `sample-day.ts`, never from what the app renders.
-- Nothing persists, so there is nothing to restore after a run. A reload is a reset.
+- Nothing persists, so there is nothing to restore after a run. Edits made through the session dialog or `Clear day` last only until the next load: a reload is a reset.
 
 ## Proof and skip reporting
 
@@ -35,4 +35,5 @@ Each feature file starts with an H1 and one paragraph on the user-visible behavi
 - [Day view](./day-view.md): the time grid with lanes, hatched overlap minutes, gutter markers, the `+N` overflow and the past-midnight cue.
 - [Agenda view](./agenda-view.md): the sample day in start order, with free slots, back-to-back notes, conflict cards and the past-midnight session.
 - [View parameter](./view-param.md): the `view` search parameter, its `day` default, unknown values, and the header's Day/Agenda switch.
+- [Session dialog](./session-dialog.md): adding, editing and deleting sessions through one dialog, its overlap preview and validation, focus return, and `Clear day` with the empty states.
 - [Theme](./theme.md): Light, Dark and System themes from the header menu.

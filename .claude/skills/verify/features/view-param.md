@@ -8,6 +8,7 @@ The `view` search parameter picks the view, so a reload or a shared link opens t
 - `view-agenda`: `/?view=agenda` opens the Agenda, and a reload keeps it.
 - `view-unknown`: an unknown value such as `?view=bogus` opens the Day view without page errors.
 - `view-switch`: the header's `View` switch holds links `Day` and `Agenda`. Clicking one, or pressing Enter on it, sets `?view=` to match, and the current one has `aria-current="page"`.
+- `view-keeps-edits`: switching views keeps sessions added or changed in the dialog. Only a reload goes back to the sample day.
 
 ## How to get to it (user POV)
 
@@ -51,9 +52,11 @@ Preconditions:
   ```
 
   It prints `day current: page`, `after click: ?view=agenda`, and `after Enter: ?view=day errors: []`.
+- **Edits survive a switch.** The session dialog proof (`session-dialog.md`) adds a session in the Agenda, switches to Day and finds it in the grid.
 - **Flagship.** `agenda-conflicts.mjs` (see `conflict-summary.md`) also clicks `Agenda` in the switch and waits for `?view=agenda`.
 
 ## Gotchas
 
+- `list "Agenda"` is absent on an empty day. The recipes above run on a fresh load, which always has the sample day.
 - The server answers `/` with a 307 to `/?view=day`. `curl` without `-L` sees no page.
 - The switch is two plain links, so a click works even before hydration. Keyboard focus moves through the page from the top, so the Tab loop above presses Tab until the `Day` link has focus rather than counting presses.
