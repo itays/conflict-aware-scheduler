@@ -11,6 +11,7 @@ import { DayView } from "./day-view"
 import { ModeToggle } from "./mode-toggle"
 import { useSchedule } from "./schedule-provider"
 import { SessionDialog } from "./session-dialog"
+import { TodayHeader } from "./today-header"
 
 export const viewSearchSchema = z.object({
   view: z.enum(["day", "agenda"]).default("day").catch("day"),
@@ -109,7 +110,8 @@ export function SchedulerPage({
           <ModeToggle />
         </div>
       </header>
-      <main className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-4 py-6 sm:px-6">
+      <main className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col gap-3 px-4 py-6 sm:px-6">
+        <TodayHeader />
         {view === "agenda" ? (
           <AgendaView {...editing} focus={focus} />
         ) : (
