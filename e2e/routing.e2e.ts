@@ -64,6 +64,21 @@ test("the View switch drops the conflict filter", async ({ page }) => {
   await expect(page.getByText(/^Highlighting/)).toHaveCount(0)
 })
 
+test("both views open on today's date", async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 10, 22, 9, 0))
+  const today = page.getByText("Sunday, November 22")
+
+  await openHydrated(page, "?view=day")
+  await expect(today).toBeVisible()
+
+  await viewLink(page, "Agenda").click()
+  await expect(page.getByRole("list", { name: "Agenda" })).toBeVisible()
+  await expect(today).toBeVisible()
+
+  await openHydrated(page, "?view=agenda")
+  await expect(today).toBeVisible()
+})
+
 test("an added session survives a view switch, not a reload", async ({
   page,
 }) => {

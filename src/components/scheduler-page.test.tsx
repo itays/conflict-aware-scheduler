@@ -1,5 +1,5 @@
-import { screen, within } from "@testing-library/react"
-import { describe, expect, it } from "vitest"
+import { act, screen, within } from "@testing-library/react"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { renderApp } from "@/test/render-app"
 
 function dayView() {
@@ -48,5 +48,31 @@ describe("view switch", () => {
       await screen.findByRole("region", { name: "Day" })
     ).toBeInTheDocument()
     expect(router.state.location.search).toEqual({ view: "day" })
+  })
+})
+
+describe("today's date", () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it.each(["day", "agenda"])("shows above the %s view", async (view) => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date(2026, 10, 22, 9, 0))
+    await renderApp(`/?view=${view}`)
+    const date = screen.getByText("Sunday, November 22")
+    expect(date.closest("time")).toHaveAttribute("datetime", "2026-11-22")
+  })
+
+  it("rolls over to the next day at midnight", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date(2026, 10, 22, 23, 59, 30))
+    await renderApp("/?view=day")
+    expect(screen.getByText("Sunday, November 22")).toBeInTheDocument()
+    act(() => {
+      vi.advanceTimersByTime(60_000)
+    })
+    const date = screen.getByText("Monday, November 23")
+    expect(date.closest("time")).toHaveAttribute("datetime", "2026-11-23")
   })
 })
