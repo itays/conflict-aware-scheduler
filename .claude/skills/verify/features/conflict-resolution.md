@@ -11,7 +11,7 @@ The Agenda's conflict cards are where conflicts get resolved. Each session in a 
 - `show-in-day`: `Show in Day view` goes to `?view=day&conflict=<ids>`. The conflict's blocks get a ring and a hidden `Highlighted` label, a bar reads `Highlighting the conflict at HH:mm – HH:mm.`, the grid opens above the conflict, and `Clear highlight` goes back to `?view=day`.
 - `summary-opens-agenda`: the header summary, while there are conflicts, is a link to `?view=agenda` with no filter.
 - `overflow-filter`: `+N` goes to `?view=agenda&conflict=<folded ids>`. The Agenda shows only that conflict's card under `Showing only the conflict at HH:mm – HH:mm.`, and `Show all` goes back to `?view=agenda`.
-- `filter-resolved`: moving sessions out of a filtered conflict keeps the rest of it in view. Once none is left, the bar reads `This conflict is resolved.`. Focus goes to `Show all` when the filter hides the moved session.
+- `filter-resolved`: moving a session out of a filtered conflict keeps whatever is still in conflict in view. Once the filtered sessions are in no conflict, the bar reads `This conflict is resolved.`, even though sessions may remain where they were: a conflict needs two sessions, so one move resolves a two-session conflict and two moves resolve a three-session one. Focus goes to `Show all` when the filter hides the moved session.
 
 ## How to get to it (user POV)
 
@@ -31,7 +31,7 @@ Preconditions:
   - checks every card session's move button against a brute-force oracle that tries each 5-minute start up to 23:55;
   - clicks the first card's `Show in Day view`, checks the `conflict` ids, the highlighted blocks and the bar, then `Clear highlight`;
   - moves `Recruiter debrief` and checks the summary, the card gone, and focus on its new row;
-  - opens the first conflict filtered, moves its sessions out one by one until `This conflict is resolved.`, checking the cards left and focus on `Show all`, then `Show all`;
+  - opens the first conflict filtered, moves one session at a time until it is no longer a conflict (two moves on the sample day, leaving `Room 4B hold` in place) and the bar reads `This conflict is resolved.`, checking the cards left and focus on `Show all`, then `Show all`;
   - adds `Extra hold` at 10:45, clicks `+1`, checks the Agenda shows only that conflict, then `Show all`;
   - adds a 24-hour `All day` session and checks every button reads `No free slot today` and is disabled.
 - **Evidence.** `agenda.png`, `day-highlight.png`, `after-move.png`, `filtered.png`, `filtered-resolved.png`, `overflow-filtered.png`, `no-free-slot.png` and `report.json`.

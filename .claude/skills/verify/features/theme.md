@@ -33,16 +33,37 @@ Preconditions:
   await p.getByRole("button", { name: "Toggle theme" }).click()
   await p.getByRole("menuitemradio", { name: "Dark" }).click()
   await p.waitForFunction(() => document.documentElement.classList.contains("dark"))
+  await p.keyboard.press("Escape")
+  await p.getByRole("menu").waitFor({ state: "hidden" })
   await p.screenshot({ path: out })
   console.log("html class:", await p.evaluate(() => document.documentElement.className))
   await b.close()' "$URL/?view=agenda" "$ARTIFACTS/theme/dark.png"
   ```
 
   It prints `html class: dark`, and `dark.png` shows the Agenda on a dark background. Pass `"$URL/?view=day"` instead to see the Day grid: the blue session blocks and the red, hatched conflict blocks stay readable on the dark card.
+- **Stored choice and no flash.** Run:
+
+  ```sh
+  node --input-type=module -e '
+  import { chromium } from "@playwright/test"
+  const [url] = process.argv.slice(1)
+  const b = await chromium.launch(); const p = await b.newPage({ colorScheme: "light" })
+  await p.goto(url); await p.waitForLoadState("networkidle")
+  await p.getByRole("button", { name: "Toggle theme" }).click()
+  await p.getByRole("menuitemradio", { name: "Dark" }).click()
+  console.log("stored:", await p.evaluate(() => localStorage.getItem("theme")))
+  await p.route(/\.(js|tsx?|mjs)(\?|$)/, (r) => r.abort())
+  await p.reload({ waitUntil: "domcontentloaded" })
+  console.log("html class with no app scripts:", await p.evaluate(() => document.documentElement.className))
+  await b.close()' "$URL/?view=agenda"
+  ```
+
+  It prints `stored: dark` and `html class with no app scripts: dark`. With every script file blocked, React never runs, so only the inline script can have applied the theme.
 - **System.** Run `node .claude/skills/verify/scripts/snap.mjs "$URL/?view=agenda" "$ARTIFACTS/theme" system-dark dark`. With no stored choice, `system-dark.png` is dark. To prove it follows a live change, open the page with `colorScheme: "light"`, pick `System` from the menu, then call `page.emulateMedia({ colorScheme: "dark" })`: `<html>` gains `dark` without a reload.
 
 ## Gotchas
 
 - The theme is kept in `localStorage` under `theme`. Reusing a browser context carries it into the next check.
 - The menu items are `menuitemradio`, not `button`.
+- The menu stays open after a pick. Press Escape and wait for `menu` to be hidden before a screenshot, or the menu, still fading out, covers part of the page.
 - Clicking `Toggle theme` before hydration does nothing, and the menu never opens. Wait for `networkidle` first.

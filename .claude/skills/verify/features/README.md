@@ -38,4 +38,5 @@ Each feature file starts with an H1 and one paragraph on the user-visible behavi
 - [View parameter](./view-param.md): the `view` and `conflict` search parameters, the `day` default, unknown values, and the header's Day/Agenda switch.
 - [Drag to move](./drag.md): dragging a Day block by mouse, pen, touch or keyboard in 15-minute steps, with the live label, live conflict marks, clamping, Esc, the drop, and the screen reader announcements.
 - [Session dialog](./session-dialog.md): adding, editing and deleting sessions through one dialog, its overlap preview and validation, focus return, and `Clear day` with the empty states.
+- [Today's date](./today.md): the viewer's local date above whichever view is showing.
 - [Theme](./theme.md): Light, Dark and System themes from the header menu.
