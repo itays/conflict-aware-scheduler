@@ -183,6 +183,20 @@ try {
       .getByText("Enter a time as HH:mm, from 00:00 to 23:55.")
       .isVisible()
   )
+  await field("Start").fill("09:03")
+  check(
+    "off-step start message",
+    await dialog()
+      .getByText("Start on a 5-minute step, such as 09:00 or 09:05.")
+      .isVisible()
+  )
+  await field("Start").fill("9am")
+  check(
+    "unparseable start message",
+    await dialog()
+      .getByText("Enter a time as HH:mm, from 00:00 to 23:55.")
+      .isVisible()
+  )
   await field("Start").fill("09:00")
   await duration("Custom")
   await field("Custom duration (minutes)").fill("42")

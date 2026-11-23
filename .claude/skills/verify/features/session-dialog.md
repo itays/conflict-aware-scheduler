@@ -27,9 +27,9 @@ Preconditions:
 
 - Baseline preconditions from the README.
 
-- **Full proof.** Run `node .claude/skills/verify/scripts/session-dialog.mjs "$URL" "$ARTIFACTS/session-dialog"`. It prints `PASS: 26 checks` and exits 0. In order, it:
+- **Full proof.** Run `node .claude/skills/verify/scripts/session-dialog.mjs "$URL" "$ARTIFACTS/session-dialog"`. It prints `PASS: 28 checks` and exits 0. In order, it:
   - adds `Design review` at 12:30 for 30 minutes from the Agenda, checks the preview against its oracle (`Lunch with candidate`, 30 min), and checks the summary and the focus return after saving;
-  - types each kind of invalid input and checks its message and the disabled Save;
+  - types each kind of invalid input (a blank title, an 81-character title, starts `23:57`, `09:03` and `9am`, and a custom `42` minutes) and checks its message and the disabled Save;
   - edits `Panel wrap-up` to 23:45 for 60 minutes, checks `00:45 next day`, the summary, and that focus lands on the session again (now its card's `Edit`, since it overlaps `On-call handoff`), by `data-session-id`;
   - switches to Day, finds `Design review` in the grid, deletes `Take-home review — Noa B.` from its block, and checks the summary and the focus on `New session`;
   - clicks `Clear day`, checks both empty states, and opens the dialog from `Add the first session`.
