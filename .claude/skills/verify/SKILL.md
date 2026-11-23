@@ -105,6 +105,7 @@ For a step-by-step interaction the scripts don't cover, write a short Node scrip
 | `getByRole("button", { name: "Toggle theme" })`     | theme menu: `Light`, `Dark`, `System`                                                       |
 | `getByRole("navigation", { name: "View" })`         | Day/Agenda switch: links `Day` and `Agenda`; the current one has `aria-current="page"`      |
 | `getByRole("region", { name: "Day" })`              | the Day view's time grid                                                                    |
+| `day.locator("time")`                               | today's date above the grid, `datetime="YYYY-MM-DD"`, from the browser's clock; absent before hydration |
 | `day.getByRole("list", { name: "Sessions" })`       | the grid's session blocks, each a `listitem` named `<title>, HH:mm – HH:mm` holding a button that opens the session (click or Enter); pressing and moving the button drags it, and so do Space, the arrow keys and Space again |
 | `locator("[data-drag-label]")`                      | the gutter label showing the landing start `HH:mm` during a drag; hidden from the accessibility tree, absent otherwise |
 | `locator("[data-drag-announcer]")`                  | the Day view's visually hidden `aria-live` region: `Picked up …`, `<title> at HH:mm` per keyboard step, `<title> moved to HH:mm, overlaps N sessions`, `Move cancelled. …`. It has no role, so `getByRole("status")` stays unique |
