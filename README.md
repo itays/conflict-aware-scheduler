@@ -2,7 +2,12 @@
 
 A single-page app for planning one day of sessions and seeing where they collide. It opens on a sample day with two conflicts, shows the day as a time grid (**Day**) or as a list (**Agenda**), and helps you resolve each conflict by dragging, editing, or moving a session to the next free slot.
 
-Live at https://conflict-aware-scheduler.itaysidis.workers.dev, redeployed on every push to `main`.
+Live at https://conflict-aware-scheduler.itaysidis.workers.dev. CI deploys every push to `main` to Cloudflare Workers.
+
+<p>
+  <img src="docs/images/day-view.png" alt="Day view: the sample day on a time grid, with two conflicts drawn side by side, hatched where they overlap and marked in the hour gutter" width="49%">
+  <img src="docs/images/agenda-view.png" alt="Agenda view: the same day as a list, with free slots, back-to-back notes and a conflict card offering Move to next free slot and Edit" width="49%">
+</p>
 
 ## Run it
 
@@ -25,33 +30,39 @@ npm run test:e2e                      # end-to-end tests (Playwright, Chromium)
 npm run typecheck && npm run check    # TypeScript, then Biome format and lint
 ```
 
-`test:e2e` builds the app and serves the production build on port 4173 through workerd, the Cloudflare Workers runtime; `test:e2e:smoke` runs only the `@smoke` test, and `test:e2e:headed` and `test:e2e:ui` show the browser. CI (`.github/workflows/ci.yml`) runs lint, typecheck, unit tests, the build and the full e2e suite on pull requests and pushes to `main`. A Husky pre-commit hook runs Biome on staged files, then typecheck and unit tests. `npm run check -- --write` applies Biome's safe fixes.
-
-## Deploy
-
-The app runs on Cloudflare Workers through `@cloudflare/vite-plugin`, configured in `wrangler.jsonc`. CI deploys every push to `main` after the checks and e2e tests pass, using the `CLOUDFLARE_API_TOKEN` repository secret. To deploy by hand, log in once with `npx wrangler login`, then run `npm run deploy`.
+CI runs all of these, plus the build, on every pull request.
 
 ## What it does
 
-- **Day view**: a vertical 24-hour grid. Overlapping sessions sit side by side in lanes, only the minutes they share are hatched, and a red bar in the hour gutter marks each conflict. Past three lanes, the rest fold into a `+N` link that opens the Agenda filtered to that conflict.
-- **Agenda view**: the day as a time-ordered list, with free slots between sessions, a "Back-to-back, no conflict" note where one session ends as the next starts, and one card per conflict. Each card lists its sessions, every overlapping pair with its shared minutes, and offers **Move to next free slot**, **Edit** and **Show in Day view**.
-- **One dialog** adds and edits sessions in both views. It shows the end time and previews overlaps as you type. Only invalid input disables Save.
+- **Day view**: a vertical 24-hour grid. Overlapping sessions sit side by side in lanes, only the minutes they share are hatched, and a red bar in the hour gutter marks each conflict.
+- **Agenda view**: the day as a time-ordered list, with free slots between sessions and one card per conflict. Each card lists its sessions, every overlapping pair with its shared minutes, and offers **Move to next free slot**, **Edit** and **Show in Day view**.
+- **One dialog** adds and edits sessions in both views. It shows the end time and previews overlaps as you type.
 - **Header**: a conflict summary ("2 conflicts · 5 sessions") that links to the Agenda, the Day/Agenda switch, Clear day, New session, and a light/dark/system theme menu.
 - **Drag** (the extension): move a session up or down the Day grid with a mouse, a finger or the keyboard. Conflicts update on every 15-minute step.
+
+## Edge cases
+
+| Case              | What happens                                                                                                                                                                                                                                                                  |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Invalid input     | The dialog shows the error under the field and disables Save. A title must be 1 to 80 characters. A start must be a valid HH:mm on the 5-minute grid. A duration must be 5 minutes to 24 hours, in 5-minute steps.                                                            |
+| Back-to-back      | Not a conflict, because a session covers [start, end). The Agenda shows "Back-to-back, no conflict" between them.                                                                                                                                                             |
+| Crossing midnight | A session can start as late as 23:55 and last up to 24 hours. The Day grid draws it to the bottom edge with a "continues tomorrow" cue, and the Agenda marks its end "ends next day".                                                                                         |
+| Empty schedule    | Both views show "Nothing scheduled" with an **Add the first session** button. Clear day gets you there from the sample day.                                                                                                                                                   |
+| Crowded schedule  | The Day grid shows at most three lanes. The rest of a conflict folds into a `+N` link that opens the Agenda filtered to that conflict, which lists every session. When the day has no gap long enough, **Move to next free slot** is disabled and reads "No free slot today". |
 
 ## Product decisions
 
 The vocabulary (Schedule, Session, Duration, Back-to-back, Overlap, Conflict, Free slot) is defined in [GLOSSARY.md](GLOSSARY.md), and code and UI use the same words. The two decisions with the most consequences are recorded as ADRs.
 
-- **Conflicts warn, they never block** ([ADR 0001](docs/adr/0001-conflicts-warn-never-block.md)). People double-book on purpose: a room hold during the meeting that needs it, or a tentative slot. Refusing the save would push them to work around the tool. Saves and drops always go through, and the conflict stays visible until it is resolved. Only invalid input blocks: an empty title or one over 80 characters, a start that does not parse or is off the 5-minute grid, and a duration outside 5 minutes to 24 hours or not in 5-minute steps.
-- **The schedule is one day, and a session may run past midnight** ([ADR 0002](docs/adr/0002-one-day-schedule.md)). This handles the brief's midnight case without multi-day storage, navigation or cross-day conflicts. A session can start as late as 23:55 and last up to 24 hours. The Day grid draws it to the bottom edge with a "continues tomorrow" cue, and the Agenda marks its end "ends next day".
+- **Conflicts warn, they never block** ([ADR 0001](docs/adr/0001-conflicts-warn-never-block.md)). People double-book on purpose: a room hold during the meeting that needs it, or a tentative slot. Refusing the save would push them to work around the tool. Saves and drops always go through, and the conflict stays visible until it is resolved. Only invalid input blocks a save.
+- **The schedule is one day, and a session may run past midnight** ([ADR 0002](docs/adr/0002-one-day-schedule.md)). This handles the brief's midnight case without multi-day storage, navigation or cross-day conflicts.
 - **A session covers [start, end)**, so back-to-back sessions share no minute and are not flagged. A tight but valid day should not look broken. Identical sessions and one session inside another do overlap.
 - **A conflict is a connected group, not a pair.** Sessions at 09:00–10:00, 09:30–10:30 and 10:15–11:00 are one conflict made of two overlaps. The header count then matches the number of problems to solve, and each card keeps related overlaps together.
 - **Colour is never the only signal.** Conflicts are red and also hatched, carry a warning icon, and have screen-reader text ("In conflict").
-- **"Move to next free slot" is predictable and never creates a new conflict.** It picks the earliest start at or after the session's current start where its full duration fits, no later than 23:55. When nothing fits, the button is disabled and reads "No free slot today". One deterministic fix per session is easier to trust than a ranked list of suggestions.
+- **"Move to next free slot" is predictable and never creates a new conflict.** It picks the earliest start at or after the session's current start where its full duration fits, no later than 23:55. One deterministic fix per session is easier to trust than a ranked list of suggestions.
 - **Times are 24-hour HH:mm on a 5-minute grid**, the same everywhere, which removes AM/PM and locale ambiguity.
 - **The view is in the URL** (`?view=day|agenda`, plus `&conflict=` for a filtered or highlighted conflict), so reload, Back and shared links keep it.
-- **First load shows a realistic sample day**, matching the design boards in `sketches/`, so the app's purpose is visible immediately. Clear day gives an empty schedule, which shows its own empty state.
+- **First load shows a realistic sample day**, matching the design boards in `sketches/`, so the app's purpose is visible immediately.
 
 ## Technical decisions
 
@@ -60,7 +71,7 @@ The vocabulary (Schedule, Session, Duration, Back-to-back, Overlap, Conflict, Fr
 - **Conflict detection sorts once and sweeps.** Sorted by start, a run of sessions stays one group while each next session starts before the run's latest end. That gives connected groups in O(n log n). Pairs are only compared inside a group.
 - **The drag preview reuses the layout.** While a session is dragged, the Day view lays out a hypothetical schedule with the session at its landing time. Lanes, hatching, gutter markers and highlights follow every step without any drag-specific drawing code.
 - **Tests are chosen by layer:**
-  - _Unit (Vitest)_: the edge-case matrix in the schedule module, where each case is one line of data. It covers back-to-back, contained, identical, a three-session chain, separate conflicts, past midnight, the 23:55 clamp, 15-minute drag rounding, next free slot found, none found and never conflicting, and every validation rule.
+  - _Unit (Vitest)_: an edge-case matrix for the schedule module, one line of data per case. It covers every edge case above, plus drag rounding and the next-free-slot rule.
   - _Component (React Testing Library)_: user flows driven by role and label. Saving an overlapping session updates the summary and the cards, invalid input disables Save, Move to next free slot clears a conflict, and keyboard dragging moves a session and announces it.
   - _End-to-end (Playwright)_: what needs a real browser and the production build, which jsdom does not have. The redirect from `/` and the URL parameters across reloads, the stored theme applied before any app script runs, the grid's opening scroll and lane geometry, mouse, touch and keyboard drags, and focus after each dialog save and card move, plus a smoke test that the built app loads.
 
@@ -81,19 +92,21 @@ The vocabulary (Schedule, Session, Duration, Back-to-back, Overlap, Conflict, Fr
 
 ## What was cut to fit the time box
 
-1. **Persistence across reloads (first next step).** The schedule is already one serializable value in a reducer, so this is an effect that writes `Session[]` to `localStorage` on change, plus a load step that validates the stored value with the same rules as the editor and falls back to the sample day. The one subtlety is that the page is rendered on the server, so stored data must load after hydration to avoid a mismatch. **Expected cost: about 1–2 hours**, including tests for corrupt or outdated stored data.
-2. Undo and redo. Persistence and undo were their own extension option, and drag-and-drop was chosen instead. The reducer makes undo a history stack around it.
-3. Multiple days, day navigation and the mini calendar from board A. Sessions starting on the previous day are not representable (ADR 0002).
+Each of these is planned under [Next steps](#next-steps-and-scale).
+
+1. Persistence across reloads.
+2. Undo and redo. Persistence and undo were their own extension option, and drag-and-drop was chosen instead.
+3. Multiple days and day navigation, including the mini calendar from board A.
 4. Resizing a session by dragging its edge, and dragging in the Agenda view.
-5. More than one suggested fix per conflict, scoring fixes ("clears 2 of 3 overlaps"), and marking an overlap as intentional so it stops being flagged.
+5. More than one suggested fix per conflict, and marking an overlap as intentional.
 6. A persistent inspector panel beside the Day grid. The dialog covers editing.
-7. Timezones and locale-specific time formats. Times are always 24-hour HH:mm.
+7. Timezones and locale-specific time formats.
 
 ## Proud of, and would redo
 
 **Proud of:** one pure function draws the day. `dayLayout` takes any schedule and returns the lanes, hatching, gutter markers and `+N` overflows. The Day view renders its result, and dragging just passes it the schedule with the session at its landing time. That is why live conflict updates during a drag needed no extra code, and why the riskiest logic is unit tested without a browser.
 
-**Would redo:** the drag library. For move-only vertical dragging, dnd-kit cost more than it saved. Touch needed a sensor that excludes touch from the pointer sensor, and arrow-key steps needed a custom keyboard sensor. Its default live region collided with the header's status role. Its measuring treated a block changing lanes mid-drag as movement, which needed a custom measure function. A small hand-written pointer and keyboard handler on top of `draggedStart` would be about the same size and have none of these workarounds.
+**Would redo:** server rendering. TanStack Start renders each page on the server first, but this app has no backend and no data to fetch, so the server pass buys nothing. Three pieces of code exist only because of it. The header's date stays empty until the page hydrates, because the server's clock is in UTC and its "today" can be another day than the viewer's. The stored theme needs a script that runs before hydration, so the page does not flash the wrong theme. And persistence, the first next step, has to wait until after hydration to read `localStorage`. A client-only app on Vite and TanStack Router keeps the typed, validated search params and has none of these problems.
 
 ## Where and how AI was used
 
@@ -101,17 +114,18 @@ The build was paired with Claude (Claude Code), and the commits it co-wrote carr
 
 - **Design**: the product decisions came out of a design-and-grilling session: what counts as a conflict, whether conflicts block a save, and how midnight works. The results became the glossary and the ADRs, and the spec ([#1](https://github.com/itays/conflict-aware-scheduler/issues/1)) was split into issues #2–#8.
 - **Implementation**: issues #2–#7 were each built by Claude Code on its own branch and merged by pull request (#9–#14). This README and the final polish (#8) were also written with Claude Code.
-- **Verification**: Claude also wrote a project skill (`.claude/skills/verify/`) that drives the running app in Chromium and checks what a user sees against oracles computed independently from the sample day. For example, it finds conflicts with a brute-force pairwise check rather than the app's own `findConflicts`, so the app cannot pass by agreeing with itself.
+- **Verification**: a project skill in `.claude/skills/verify/`, generated with pstack's `create-verification-skill` and tailored to this app. It launches its own instance of the app, drives it in Chromium the way a user would, and saves screenshots as proof. A feature map says what to check for each part of the UI. The checks compare the app against answers computed independently from the sample day. For example, it finds conflicts with a brute-force pairwise check rather than the app's own `findConflicts`, so the app cannot pass by agreeing with itself. The skill is committed with the code and kept current as features change ([#21](https://github.com/itays/conflict-aware-scheduler/pull/21)), so any teammate, or their coding agent, can prove a UI change in a real browser before a test for it exists.
 - **Human role**: choosing the scope and the product decisions, and reviewing each change before merging it.
 
 ## Next steps and scale
 
 **With more time**, in order:
 
-1. Persistence (above), then undo/redo on the same reducer, so a mistaken drag or "Clear day" costs nothing.
-2. Multiple days, with a session's start stored as a date-time and conflicts checked across day boundaries. This is the change ADR 0002 deferred.
-3. Smarter resolution: score candidate moves by how many overlaps they clear, suggest the nearest free slot before or after, and let a user mark an overlap as intentional.
-4. Resize by dragging a block's bottom edge, reusing the same step and preview logic.
+1. **Persistence.** The schedule is already one serializable value in a reducer, so this is an effect that writes `Session[]` to `localStorage` on change, plus a load step that validates the stored value with the same rules as the editor and falls back to the sample day. Stored data must load after hydration to avoid a mismatch with the server render. Expected cost: about 1–2 hours, including tests for corrupt or outdated stored data.
+2. **Undo and redo** as a history stack around the same reducer, so a mistaken drag or Clear day costs nothing.
+3. **Multiple days**, with a session's start stored as a date-time and conflicts checked across day boundaries. This is the change ADR 0002 deferred. Sessions that start on the previous day are not representable today.
+4. **Smarter resolution**: score candidate moves by how many overlaps they clear ("clears 2 of 3 overlaps"), suggest the nearest free slot before or after, and let a user mark an overlap as intentional so it stops being flagged.
+5. **Resize** by dragging a block's bottom edge, reusing the same step and preview logic.
 
 **What changes at scale:**
 
