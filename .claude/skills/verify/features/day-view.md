@@ -1,9 +1,10 @@
 # Day view
 
-The Day view draws the schedule on a vertical 24-hour grid, one pixel per minute, in the style of design board A. Each session is a block with its title and time range. Overlapping sessions sit side by side in lanes. Sessions in a conflict turn red, carry a warning icon and an `In conflict` label, and only the minutes they overlap another session are hatched. A red marker in the hour gutter spans each conflict. Past three lanes, the extra sessions fold into a `+N` link, which opens the Agenda filtered to their conflict. With `?conflict=<ids>` the conflict's blocks are highlighted under a bar with `Clear highlight`. A session running past midnight stops at the bottom of the grid with `continues tomorrow`. The grid scrolls on its own and opens just above the first session. Clicking a block, or pressing Enter on it, opens the session dialog for that session. Dragging it, by pointer or with Space and the arrow keys, moves its start (see [`drag.md`](drag.md)). An empty day shows a `Nothing scheduled` empty state instead of the grid.
+The Day view opens with today's date, then draws the schedule on a vertical 24-hour grid, one pixel per minute, in the style of design board A. Each session is a block with its title and time range. Overlapping sessions sit side by side in lanes. Sessions in a conflict turn red, carry a warning icon and an `In conflict` label, and only the minutes they overlap another session are hatched. A red marker in the hour gutter spans each conflict. Past three lanes, the extra sessions fold into a `+N` link, which opens the Agenda filtered to their conflict. With `?conflict=<ids>` the conflict's blocks are highlighted under a bar with `Clear highlight`. A session running past midnight stops at the bottom of the grid with `continues tomorrow`. The grid scrolls on its own and opens just above the first session. Clicking a block, or pressing Enter on it, opens the session dialog for that session. Dragging it, by pointer or with Space and the arrow keys, moves its start (see [`drag.md`](drag.md)). An empty day shows a `Nothing scheduled` empty state instead of the grid.
 
 ## Sub-features
 
+- `day-date`: above the grid, a `<time datetime="YYYY-MM-DD">` shows the viewer's local date: the short weekday over the day of the month in a filled circle, beside the full date (`Monday, November 23`). It appears after hydration and rolls over at the viewer's midnight.
 - `day-hours`: the gutter labels every hour `00:00` to `23:00`.
 - `day-blocks`: one block per session, named `<title>, HH:mm – HH:mm` (also its hover tooltip, which keeps short sessions readable).
 - `day-lanes`: overlapping sessions split the width into side-by-side lanes and never cover each other. Back-to-back sessions stay full width and blue.
@@ -34,6 +35,21 @@ Preconditions:
   - `region "Day"` holds `list "Conflicts"` and `list "Sessions"`, which has 11 `listitem`s, one per sample session.
   - Each listitem holds one `button`. For the five items `System design — Omer Levi`, `Hiring sync`, `Room 4B hold`, `Culture interview` and `Recruiter debrief`, the button's name starts with `In conflict`. For `Standup sync` and `Phone screen — Maya Cohen` (back-to-back) it does not.
   - `listitem "On-call handoff, 23:30 – 00:30"` ends with `continues tomorrow`.
+- **Today's date.** Run:
+
+  ```sh
+  node --input-type=module -e '
+  import { chromium } from "@playwright/test"
+  const [url] = process.argv.slice(1)
+  const b = await chromium.launch(); const p = await b.newPage()
+  await p.clock.setFixedTime(new Date(2026, 10, 22, 9, 0))
+  await p.goto(url); await p.waitForLoadState("networkidle")
+  const t = p.getByRole("region", { name: "Day" }).locator("time")
+  console.log("date:", await t.getAttribute("datetime"), (await t.textContent()).trim())
+  await b.close()' "$URL/?view=day"
+  ```
+
+  It prints `date: 2026-11-22 Sun22Sunday, November 22`: the weekday and day of the month, hidden from screen readers, then the full date. The clock is fixed so the expected value is known (see Gotchas).
 - **Look at it.** `day.png` opens at `08:00`. System design, Hiring sync and Room 4B hold sit in three side-by-side lanes, and Culture interview and Recruiter debrief in two. Only the overlapping minutes are hatched, and red gutter bars sit at 10:30–11:15 and 14:00–14:15.
 - **Conflict marks against the oracle.** Run the flagship proof (`conflict-summary.md`). It checks the `In conflict` blocks and the gutter markers against its own pairwise oracle.
 - **Past midnight.** The full-page screenshot does not scroll the grid, so scroll the block into view:
@@ -81,6 +97,7 @@ Preconditions:
 
 ## Gotchas
 
+- Today's date comes from the browser's clock, not from `sample-day.ts`. Fix the clock (`page.clock.setFixedTime`) to compare against a known value. The server leaves the date out of its HTML, since its clock is in UTC and could name another day, so the date is absent until React hydrates. The header keeps its height meanwhile, so nothing below it moves.
 - Before hydration the server-rendered grid sits at `00:00`. It jumps to `08:00` when React hydrates. `snap.mjs` waits for `networkidle`, so its screenshots show the hydrated state. A hand-written script must do the same.
 - Session blocks are absolutely positioned. Read their order from the ARIA snapshot (start order), not from screen position. A block being dragged keeps its original `top` and moves by a `transform`.
 - The Agenda's conflict cards also hold lists named `Sessions`. Scope the Day list as `region "Day"` → `list "Sessions"`.
